@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify cell widths, shaping and metadata of a built font (TTF or WOFF2).
+"""Verify cell widths, shaping and metadata of a built font (OTF, TTF or WOFF2).
 
 Checks
   * every glyph advance is 0, W or 2W; East Asian Wide/Fullwidth code points are 2W,
@@ -26,6 +26,7 @@ import unicodedata
 from pathlib import Path
 
 import uharfbuzz as hb
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,7 +69,11 @@ def read_cases(path, columns):
     return cases
 
 
-def font_bytes(font):
+def font_bytes(path):
+    """Raw sfnt bytes (WOFF2 is unpacked; TTF / OTF are read as they are)."""
+    if path.suffix in (".ttf", ".otf"):
+        return path.read_bytes()
+    font = TTFont(path)
     buf = io.BytesIO()
     font.flavor = None
     font.save(buf)
@@ -78,6 +83,14 @@ def font_bytes(font):
 class Shaper:
     def __init__(self, data):
         self.font = hb.Font(hb.Face(hb.Blob(data)))
+
+    def has_glyph_names(self, font):
+        """True when HarfBuzz reports real glyph names (not gid123 placeholders)."""
+        cmap = font.getBestCmap()
+        if ord("=") not in cmap:
+            return False
+        name = self.font.glyph_to_string(self.font.get_nominal_glyph(ord("=")))
+        return not re.fullmatch(r"(gid|glyph)\d+", name)
 
     def shape(self, text, calt=True):
         buf = hb.Buffer()
@@ -104,11 +117,12 @@ def hb_shape_cli_total(path, text):
 def check_metrics(font, report, W):
     report.section("glyph metrics")
     cmap = font.getBestCmap()
-    hmtx, glyf = font["hmtx"], font["glyf"]
+    hmtx, glyph_set = font["hmtx"], font.getGlyphSet()
     advances = {a for a, _ in hmtx.metrics.values()}
     report.check(advances <= {0, W, 2 * W}, f"glyph advances must be in {{0, {W}, {2 * W}}}, found {sorted(advances)}")
 
     bad_wide = bad_narrow = bad_outline = 0
+    seen_outline = set()
     examples = []
     for cp, name in cmap.items():
         ch = chr(cp)
@@ -117,12 +131,13 @@ def check_metrics(font, report, W):
         if wide:
             ok = adv == 2 * W
             bad_wide += not ok
-            g = glyf[name]
-            if g.numberOfContours:
-                g.recalcBounds(glyf)
-                if g.xMin < 0 or g.xMax > 2 * W:
+            if name not in seen_outline:
+                seen_outline.add(name)
+                pen = BoundsPen(glyph_set)
+                glyph_set[name].draw(pen)
+                if pen.bounds and (pen.bounds[0] < 0 or pen.bounds[2] > 2 * W):
                     bad_outline += 1
-                    examples.append(f"U+{cp:04X} outline [{g.xMin}, {g.xMax}] leaves 0..{2 * W}")
+                    examples.append(f"U+{cp:04X} outline [{pen.bounds[0]}, {pen.bounds[2]}] leaves 0..{2 * W}")
         elif adv == 0:
             ok = unicodedata.category(ch) in ZERO_WIDTH_OK
             bad_narrow += not ok
@@ -156,7 +171,7 @@ def check_text_cases(font, shaper, path, report, W, args):
 def check_shaping_cases(font, shaper, report, W, args):
     report.section("ligature shaping (tests/shaping.txt)")
     cmap = font.getBestCmap()
-    has_names = font["post"].formatType != 3.0
+    has_names = shaper.has_glyph_names(font)
     for lineno, text, cells, glyphs in read_cases(args.shaping, 3):
         if args.partial and any(ord(c) not in cmap for c in text):
             continue
@@ -219,8 +234,8 @@ def verify(path, args):
 
     check_metrics(font, report, W)
     check_layout(font, report, args.partial)
-    shaper = Shaper(font_bytes(TTFont(path)))
-    args.cli_path = path if path.suffix == ".ttf" else None
+    shaper = Shaper(font_bytes(path))
+    args.cli_path = path if path.suffix in (".ttf", ".otf") else None
     check_text_cases(font, shaper, path, report, W, args)
     check_shaping_cases(font, shaper, report, W, args)
     check_names(font, report)

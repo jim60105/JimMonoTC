@@ -7,6 +7,8 @@
 * Make cell-width metadata explicit for terminals (xAvgCharWidth = W, panose
   monospaced, isFixedPitch) and consistent vertical metrics.
 * Drop tables that are stale or empty after FontForge / merging.
+* OpenType/CFF input: keep the CFF font names in step with the name table and
+  subroutinize the charstrings (compreffor, when installed) to shrink the file.
 """
 
 import argparse
@@ -57,6 +59,23 @@ def set_names(font, family, style, version, sources):
     return ps_name
 
 
+def finish_cff(font, family, style, ps_name, version):
+    cff = font["CFF "].cff
+    cff.fontNames = [ps_name]
+    top = cff.topDictIndex[0]
+    top.FullName = f"{family} {style}".strip()
+    top.FamilyName = family
+    top.Weight = style
+    top.version = version
+    top.Notice = COPYRIGHT
+    try:
+        import compreffor
+    except ImportError:
+        print("compreffor not installed: charstrings are not subroutinized (larger file)")
+        return
+    compreffor.compress(font)
+
+
 def drop_empty_layout_tables(font):
     for tag in ("GPOS", "GSUB"):
         if tag in font:
@@ -103,6 +122,8 @@ def main():
     os2.recalcUnicodeRanges(font)
 
     font["post"].isFixedPitch = 1
+    if "CFF " in font:
+        finish_cff(font, args.family, args.style, ps_name, args.version)
 
     font.save(args.output)
     print(f"finalized {ps_name}: {len(font.getGlyphOrder())} glyphs, W={cell} -> {args.output}")

@@ -3,8 +3,12 @@
 
 * Only full-width characters (East Asian Width W/F) that the base font lacks are
   added, so Latin / Nerd Font / box-drawing glyphs always come from Hack.
-* CFF outlines are converted to TrueType quadratics, scaled to the base UPM and
-  centred in a cell exactly 2 * W wide (W = Hack's half-width advance).
+* Noto's outlines are scaled to the base UPM and centred in a cell exactly 2 * W
+  wide (W = Hack's half-width advance).
+* --format otf (default) writes an OpenType/CFF font: Noto's cubic curves are
+  copied as they are and Hack / Nerd Fonts quadratics are raised to cubics
+  (exact), so no curve is approximated.  --format ttf converts Noto to
+  quadratics (Cu2Qu) and keeps Hack's TrueType hinting.
 * Glyphs that Hack defines with zero advance (combining marks) get that back;
   the Nerd Fonts patcher widens them to W, which misplaces them when shaped.
 """
@@ -13,7 +17,12 @@ import argparse
 import sys
 import unicodedata
 
+from fontTools.fontBuilder import FontBuilder
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.cu2quPen import Cu2QuPen
+from fontTools.pens.recordingPen import DecomposingRecordingPen, RecordingPen
+from fontTools.pens.reverseContourPen import ReverseContourPen
+from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont
@@ -69,7 +78,9 @@ def is_wide(cp):
 
 
 def select_codepoints(charset, base_cmap, cjk_cmap):
-    if charset in BIG5_LEADS:
+    if charset == "all":
+        wanted = set(cjk_cmap)
+    elif charset in BIG5_LEADS:
         wanted = big5_characters(BIG5_LEADS[charset])
     else:
         wanted = read_charset_file(charset)
@@ -140,6 +151,43 @@ def add_to_cmap(font, mapping):
                 table.cmap[cp] = name
 
 
+def charstring(recording, width, cell, wide):
+    """Type 2 charstring; the width is stored relative to nominalWidthX (= 2W), omitted for W."""
+    pen = T2CharStringPen(None if width == cell else width - wide, None)
+    recording.replay(pen)
+    return pen.getCharString()
+
+
+def convert_base_to_cff(font, order, cell, wide):
+    """Charstrings for every glyph already in the base TrueType font (quadratic -> cubic)."""
+    glyph_set = font.getGlyphSet()
+    hmtx = font["hmtx"]
+    strings = {}
+    for name in order:
+        flat = DecomposingRecordingPen(glyph_set)
+        glyph_set[name].draw(flat)
+        reversed_ = RecordingPen()  # TrueType outer contours run clockwise, CFF's counter-clockwise
+        flat.replay(ReverseContourPen(reversed_))
+        strings[name] = charstring(reversed_, hmtx[name][0], cell, wide)
+    return strings
+
+
+def install_cff(font, order, strings, cell, wide):
+    for tag in ("glyf", "loca", "fpgm", "prep", "cvt "):
+        if tag in font:
+            del font[tag]
+    font.setGlyphOrder(order)
+    builder = FontBuilder(font=font)  # no glyf any more -> CFF flavour
+    builder.setupMaxp()
+    builder.setupCFF(
+        "JimMonoTC-Regular",
+        {"FullName": "Jim Mono TC Regular", "FamilyName": "Jim Mono TC", "Weight": "Regular"},
+        strings,
+        {"defaultWidthX": cell, "nominalWidthX": wide, "BlueValues": []},
+    )
+    font["post"].formatType = 3.0  # names live in the CFF charset
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("base", help="Nerd-Font-patched Hack TTF")
@@ -148,11 +196,13 @@ def main():
     ap.add_argument("--reference", required=True, help="original Hack TTF (source of zero-width glyphs)")
     ap.add_argument(
         "--charset",
-        default="big5-common",
-        help="big5-common (default), big5, or a text file of characters / U+XXXX[-YYYY] tokens",
+        default="all",
+        help="all (default: every wide code point Noto has), big5-common, big5, "
+        "or a text file of characters / U+XXXX[-YYYY] tokens",
     )
+    ap.add_argument("--format", choices=("otf", "ttf"), default="otf", help="outline format (default otf = CFF)")
     ap.add_argument("--cjk-scale", type=float, default=1.0, help="size of CJK ink relative to the em (default 1.0)")
-    ap.add_argument("--max-error", type=float, default=1.0, help="cubic->quadratic tolerance in font units")
+    ap.add_argument("--max-error", type=float, default=1.0, help="ttf only: cubic->quadratic tolerance in font units")
     args = ap.parse_args()
 
     font = TTFont(args.base)
@@ -172,8 +222,10 @@ def main():
     scale = upm / cjk["head"].unitsPerEm * args.cjk_scale
     glyph_set = cjk.getGlyphSet()
     cjk_hmtx = cjk["hmtx"]
+    is_cff = args.format == "otf"
 
     order = font.getGlyphOrder()
+    strings = convert_base_to_cff(font, list(order), cell, wide) if is_cff else None
     taken = set(order)
     glyf, hmtx = font["glyf"], font["hmtx"]
     new_names = {}  # noto glyph name -> our glyph name
@@ -187,15 +239,27 @@ def main():
             src_advance = cjk_hmtx[src][0]
             # centre the scaled source cell inside the 2W cell
             dx = (wide - src_advance * scale) / 2
-            glyph = convert_glyph(glyph_set, src, (scale, 0, 0, scale, dx, 0), args.max_error)
+            matrix = (scale, 0, 0, scale, dx, 0)
             order.append(name)
-            glyf.glyphs[name] = glyph
-            glyph.recalcBounds(glyf)
-            hmtx.metrics[name] = (wide, getattr(glyph, "xMin", 0))
+            if is_cff:
+                rec = RecordingPen()
+                glyph_set[src].draw(TransformPen(rec, matrix))
+                bounds = BoundsPen(None)
+                rec.replay(bounds)
+                strings[name] = charstring(rec, wide, cell, wide)
+                hmtx.metrics[name] = (wide, round(bounds.bounds[0]) if bounds.bounds else 0)
+            else:
+                glyph = convert_glyph(glyph_set, src, matrix, args.max_error)
+                glyf.glyphs[name] = glyph
+                glyph.recalcBounds(glyf)
+                hmtx.metrics[name] = (wide, getattr(glyph, "xMin", 0))
         mapping[cp] = new_names[src]
 
-    font.setGlyphOrder(order)
-    glyf.glyphOrder = order
+    if is_cff:
+        install_cff(font, order, strings, cell, wide)
+    else:
+        font.setGlyphOrder(order)
+        glyf.glyphOrder = order
     add_to_cmap(font, mapping)
 
     restored = restore_zero_width(font, reference)
@@ -204,7 +268,7 @@ def main():
         print("unmapped 1-cell glyphs at wide code points: " + " ".join(f"U+{cp:04X}" for cp in dropped))
     font.save(args.output)
     print(
-        f"merged {len(mapping)} codepoints / {len(new_names)} glyphs "
+        f"merged {len(mapping)} codepoints / {len(new_names)} glyphs as {args.format} "
         f"(W={cell}, 2W={wide}, scale={scale:.4f}); restored {restored} zero-width glyphs -> {args.output}"
     )
 

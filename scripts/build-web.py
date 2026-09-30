@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
-"""Produce WOFF2 file(s) + @font-face CSS from the finished master TTF.
+"""Produce WOFF2 file(s) + @font-face CSS from the finished master font (OTF or TTF).
 
 Every output is subset from the same master, so metrics and the calt feature
-stay identical to the TTF.
+stay identical to the desktop font.
 
-  build-web.py dist/JimMonoTC-Regular.ttf --out-dir dist            # one WOFF2
-  build-web.py dist/JimMonoTC-Regular.ttf --out-dir dist --split    # latin + cjk, unicode-range CSS
+  build-web.py dist/JimMonoTC-Regular.otf --out-dir dist            # one WOFF2
+  build-web.py dist/JimMonoTC-Regular.otf --out-dir dist --split    # sliced, unicode-range CSS
+
+--split cuts the character set into slices that browsers fetch on demand
+(unicode-range); all slices share one family name, so 2W alignment holds:
+
+  latin        everything that is not East Asian Wide/Fullwidth (Hack, Nerd icons, ligatures)
+  cjk-common   Big5 common hanzi (5,401) + kana, bopomofo, CJK / fullwidth punctuation
+  cjk-big5     Big5 less common hanzi
+  cjk-N        the remaining wide code points (rare hanzi, Ext. A/B, ...), --slice-size each
 """
 
 import argparse
+import importlib.util
 import sys
 import unicodedata
 from pathlib import Path
@@ -17,8 +26,34 @@ from fontTools import subset
 from fontTools.ttLib import TTFont
 
 
+def _load_merge_cjk():
+    spec = importlib.util.spec_from_file_location("merge_cjk", Path(__file__).with_name("merge-cjk.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def is_wide(cp):
     return unicodedata.east_asian_width(chr(cp)) in ("W", "F")
+
+
+def split_groups(cmap, slice_size):
+    """Ordered {name: code points}; every code point of the font lands in exactly one group."""
+    mc = _load_merge_cjk()
+    common = mc.big5_characters(mc.BIG5_LEADS["big5-common"])
+    for lo, hi in mc.EXTRA_RANGES:
+        common.update(range(lo, hi + 1))
+    big5 = mc.big5_characters(mc.BIG5_LEADS["big5"])
+    wide = {cp for cp in cmap if is_wide(cp)}
+    groups = {
+        "latin": {cp for cp in cmap if not is_wide(cp)},
+        "cjk-common": wide & common,
+        "cjk-big5": (wide & big5) - common,
+    }
+    rest = sorted(wide - common - big5)
+    for i in range(0, len(rest), slice_size):
+        groups[f"cjk-{i // slice_size + 1}"] = set(rest[i : i + slice_size])
+    return {name: cps for name, cps in groups.items() if cps}
 
 
 def ranges(codepoints):
@@ -71,9 +106,10 @@ def face_css(family, weight, style, url, unicode_range=None):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("font", type=Path, help="master TTF")
+    ap.add_argument("font", type=Path, help="master OTF / TTF")
     ap.add_argument("--out-dir", type=Path, default=Path("dist"))
-    ap.add_argument("--split", action="store_true", help="separate latin/symbols and CJK files")
+    ap.add_argument("--split", action="store_true", help="cut into unicode-range slices (see above)")
+    ap.add_argument("--slice-size", type=int, default=2500, help="code points per rare-CJK slice (default 2500)")
     ap.add_argument("--url-prefix", default="/fonts/", help="URL prefix used in the generated CSS")
     args = ap.parse_args()
 
@@ -86,10 +122,7 @@ def main():
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.split:
-        groups = {
-            "latin": {cp for cp in cmap if not is_wide(cp)},
-            "cjk": {cp for cp in cmap if is_wide(cp)},
-        }
+        groups = split_groups(cmap, args.slice_size)
     else:
         groups = {None: set(cmap)}
 
