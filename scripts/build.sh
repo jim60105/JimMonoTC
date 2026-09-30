@@ -134,7 +134,7 @@ for style in $STYLES; do
   stem="JimMonoTC-$style"
   "$PYTHON" "$ROOT/scripts/verify.py" "$DIST/$stem.$FORMAT"
   if ((${#SPLIT_WEB[@]})); then
-    "$PYTHON" "$ROOT/scripts/verify.py" --partial "$DIST"/"$stem".*.woff2
+    "$PYTHON" "$ROOT/scripts/verify.py" --partial --max-bytes 65536 "$DIST"/"$stem".*.woff2
   else
     "$PYTHON" "$ROOT/scripts/verify.py" "$DIST/$stem.woff2"
   fi
