@@ -8,7 +8,8 @@
   monospaced, isFixedPitch) and consistent vertical metrics.
 * Drop tables that are stale or empty after FontForge / merging.
 * OpenType/CFF input: keep the CFF font names in step with the name table and
-  subroutinize the charstrings (compreffor, when installed) to shrink the file.
+  optionally subroutinize the charstrings (--subroutinize, compreffor; slow with
+  ~55k glyphs) to shrink the file.
 """
 
 import argparse
@@ -59,7 +60,7 @@ def set_names(font, family, style, version, sources):
     return ps_name
 
 
-def finish_cff(font, family, style, ps_name, version):
+def finish_cff(font, family, style, ps_name, version, subroutinize):
     cff = font["CFF "].cff
     cff.fontNames = [ps_name]
     top = cff.topDictIndex[0]
@@ -68,12 +69,10 @@ def finish_cff(font, family, style, ps_name, version):
     top.Weight = style
     top.version = version
     top.Notice = COPYRIGHT
-    try:
+    if subroutinize:
         import compreffor
-    except ImportError:
-        print("compreffor not installed: charstrings are not subroutinized (larger file)")
-        return
-    compreffor.compress(font)
+
+        compreffor.compress(font)
 
 
 def drop_empty_layout_tables(font):
@@ -92,6 +91,7 @@ def main():
     ap.add_argument("--style", default="Regular")
     ap.add_argument("--version", default="0.1.0", help="major.minor.patch")
     ap.add_argument("--sources", default="", help="upstream version summary for the version string")
+    ap.add_argument("--subroutinize", action="store_true", help="CFF only: compress charstrings with compreffor (slow)")
     args = ap.parse_args()
 
     font = TTFont(args.input)
@@ -123,7 +123,7 @@ def main():
 
     font["post"].isFixedPitch = 1
     if "CFF " in font:
-        finish_cff(font, args.family, args.style, ps_name, args.version)
+        finish_cff(font, args.family, args.style, ps_name, args.version, args.subroutinize)
 
     font.save(args.output)
     print(f"finalized {ps_name}: {len(font.getGlyphOrder())} glyphs, W={cell} -> {args.output}")

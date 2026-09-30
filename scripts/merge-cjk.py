@@ -230,7 +230,12 @@ def main():
     glyf, hmtx = font["glyf"], font["hmtx"]
     new_names = {}  # noto glyph name -> our glyph name
     mapping = {}
-    for cp in codepoints:
+    # Glyphs shared by several code points are named after the most ordinary one:
+    # unified ideographs before Kangxi / CJK radicals and compatibility ideographs.
+    def naming_rank(cp):
+        return (0x2E80 <= cp <= 0x2FDF or 0xF900 <= cp <= 0xFAFF or 0x2F800 <= cp <= 0x2FA1F, cp)
+
+    for cp in sorted(codepoints, key=naming_rank):
         src = cjk_cmap[cp]
         if src not in new_names:
             name = glyph_name_for(cp, taken)
