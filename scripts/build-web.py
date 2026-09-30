@@ -10,7 +10,8 @@ stay identical to the desktop font.
 --split cuts the character set into slices that browsers fetch on demand
 (unicode-range); all slices share one family name, so 2W alignment holds:
 
-  latin        everything that is not East Asian Wide/Fullwidth (Hack, Nerd icons, ligatures)
+  latin        everything that is neither East Asian Wide/Fullwidth nor private use (Hack, ligatures)
+  icons        Nerd Fonts icons (private use areas)
   cjk-common   Big5 common hanzi (5,401) + kana, bopomofo, CJK / fullwidth punctuation
   cjk-big5     Big5 less common hanzi
   cjk-N        the remaining wide code points (rare hanzi, Ext. A/B, ...), --slice-size each
@@ -37,6 +38,10 @@ def is_wide(cp):
     return unicodedata.east_asian_width(chr(cp)) in ("W", "F")
 
 
+def is_private_use(cp):
+    return 0xE000 <= cp <= 0xF8FF or cp >= 0xF0000
+
+
 def split_groups(cmap, slice_size):
     """Ordered {name: code points}; every code point of the font lands in exactly one group."""
     mc = _load_merge_cjk()
@@ -46,7 +51,8 @@ def split_groups(cmap, slice_size):
     big5 = mc.big5_characters(mc.BIG5_LEADS["big5"])
     wide = {cp for cp in cmap if is_wide(cp)}
     groups = {
-        "latin": {cp for cp in cmap if not is_wide(cp)},
+        "latin": {cp for cp in cmap if not is_wide(cp) and not is_private_use(cp)},
+        "icons": {cp for cp in cmap if is_private_use(cp)},
         "cjk-common": wide & common,
         "cjk-big5": (wide & big5) - common,
     }
