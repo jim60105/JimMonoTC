@@ -1,0 +1,163 @@
+name: Build fonts
+
+# master push : build + verify, keep the fonts as workflow artifacts
+# tag push v*  : same, then publish a GitHub release (tag must look like v1.2.3 or v1.2.3-rc1)
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      font_version: ${{ steps.v.outputs.font_version }}
+      label: ${{ steps.v.outputs.label }}
+      release: ${{ steps.v.outputs.release }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - id: v
+        env:
+          REF: ${{ github.ref }}
+          REF_TYPE: ${{ github.ref_type }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          release=false prerelease=false font_version=0.0.0 label="dev-${SHA::7}"
+          if [[ "$REF_TYPE" == tag && "$REF" == refs/tags/v* ]]; then
+            tag="${REF#refs/tags/}"
+            if [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-.+)?$ ]]; then
+              font_version="${BASH_REMATCH[1]}"
+              label="${tag#v}"
+              release=true
+              if [[ -n "${BASH_REMATCH[2]}" ]]; then prerelease=true; fi
+            else
+              echo "::error::tag '$tag' must look like v1.2.3 or v1.2.3-rc1"
+              exit 1
+            fi
+          fi
+          {
+            echo "font_version=$font_version"
+            echo "label=$label"
+            echo "release=$release"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.style }}
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        style: [Regular, Bold, Italic, BoldItalic]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fontforge libharfbuzz-bin
+
+      - run: python -m pip install -r requirements.txt
+
+      - name: Cache pinned upstream downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/downloads
+          key: sources-${{ hashFiles('sources/versions.env', 'sources/checksums.sha256') }}
+
+      - name: Build and verify ${{ matrix.style }}
+        env:
+          FONT_VERSION: ${{ needs.version.outputs.font_version }}
+        run: |
+          scripts/build.sh --styles "${{ matrix.style }}" --split-web
+          # the combined stylesheet only knows this style; the package job rebuilds it
+          rm dist/JimMonoTC.css
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.style }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  package:
+    name: Package
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+
+      - name: Assemble archives
+        env:
+          LABEL: ${{ needs.version.outputs.label }}
+        run: |
+          set -euo pipefail
+          cd dist
+          # one stylesheet for all four styles (each job only knew its own)
+          cat JimMonoTC-*.css > JimMonoTC.css
+          ls -l
+          mkdir -p ../out
+          otf="JimMonoTC-${LABEL}-otf"
+          web="JimMonoTC-${LABEL}-web"
+          mkdir "$otf" "$web"
+          cp JimMonoTC-*.otf "$otf/"
+          cp JimMonoTC-*.woff2 JimMonoTC.css "$web/"
+          cp -r licenses "$otf/licenses"
+          cp -r licenses "$web/licenses"
+          zip -qr "../out/$otf.zip" "$otf"
+          zip -qr "../out/$web.zip" "$web"
+          cd ../out
+          sha256sum ./*.zip | sed 's# \./# #' > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JimMonoTC-${{ needs.version.outputs.label }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: GitHub release
+    if: needs.version.outputs.release == 'true'
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: JimMonoTC-${{ needs.version.outputs.label }}
+          path: out
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          flags=(--verify-tag --generate-notes --title "$TAG")
+          if [[ "$PRERELEASE" == true ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" out/* "${flags[@]}" --repo "$GITHUB_REPOSITORY"

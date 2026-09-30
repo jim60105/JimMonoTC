@@ -61,6 +61,20 @@ Hack ─► add-ligatures.py ─► font-patcher --complete --mono ─► merge-
   `--subroutinize` 可用 compreffor 壓縮 CFF charstring，但 5 萬多 glyph 時極慢（本機超過 40 分鐘 CPU 仍未完成），預設關閉。
 * `build-web.py`：一律由完成的主字型（OTF / TTF）產生 WOFF2，保證 metrics 與 feature 一致。
 
+## CI 與發佈
+
+`.github/workflows/build.yml`：
+
+* push 到 `master`：四個樣式平行建構（`--split-web`）並各自跑 `verify.py`，成品以 workflow artifact 保留 14 天
+  （`JimMonoTC-dev-<sha>`：`-otf.zip`、`-web.zip`、`SHA256SUMS.txt`）。
+* push tag `v*`：同上，成功後建立 GitHub Release，附上兩個 zip 與 `SHA256SUMS.txt`，release notes 自動產生。
+  tag 必須是 `v1.2.3` 或 `v1.2.3-rc1`（後者標為 pre-release），否則 workflow 失敗；`1.2.3` 會寫入字型的版本號。
+  master 的一般建構版本號為 `0.0.0`。
+
+```sh
+git tag v0.3.0 && git push origin v0.3.0
+```
+
 ## 驗證
 
 `scripts/verify.py dist/JimMonoTC-Regular.otf`（WOFF2 分片用 `--partial`）（`build.sh` 最後會自動執行）：
