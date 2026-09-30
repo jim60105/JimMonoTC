@@ -28,7 +28,7 @@ scripts/build.sh --format ttf    # 改輸出 TrueType（二次曲線；Hack 的 
 
 首次執行會下載並以 SHA-256 驗證固定版本的輸入（`sources/versions.env`、
 `sources/checksums.sha256`）到 `.cache/`；Noto 檔案約 16 MB。完整 CJK 的單一樣式約 8 分鐘
-（font-patcher 約 1 分鐘、CJK 合併約 2 分鐘、`--split-web` 切片約 2 分鐘），四種樣式約 30 分鐘。
+（font-patcher 約 1 分鐘、CJK 合併約 2 分鐘），四種樣式約 30 分鐘；`--split-web` 約 270 個切片，每個樣式再多約 10 分鐘。
 
 ### Pipeline
 
@@ -48,7 +48,28 @@ Hack ─► add-ligatures.py ─► font-patcher --complete --mono ─► merge-
   （U+25FD、U+25FE、U+26A1）。
 * `finalize.py`：新 family name（含 CFF 內部名稱）、依樣式設定 `usWeightClass` / `fsSelection` / `macStyle`、`OS/2.xAvgCharWidth = W`、monospaced panose、清掉過時表。
   `--subroutinize` 可用 compreffor 壓縮 CFF charstring，但 5 萬多 glyph 時極慢（本機超過 40 分鐘 CPU 仍未完成），預設關閉。
-* `build-web.py`：一律由完成的主字型（OTF / TTF）產生 WOFF2，保證 metrics 與 feature 一致。
+* `build-web.py`：一律由完成的主字型（OTF / TTF）產生 WOFF2，保證 metrics 與 feature 一致（見下節「網頁分片」）。
+
+### 網頁分片
+
+`build-web.py --split`（`build.sh --split-web`）把 cmap 切成互斥、合起來涵蓋整個 cmap（扣掉 U+0000、U+000D、U+FEFF）的群組。
+群組名稱是對外介面（下游專案依名稱挑選），不要改名：
+
+* `latin`、`latin-ext`、`greek-cyrillic`、`box`、`symbols`：單格寬、非私用區的碼位，依 `build-web.py` 內 `WINDOWS` 的順序先到先得。
+  落在所有 window 之外的單格碼位會讓建構失敗（要刻意擴充 window，不會默默丟字）。`latin` 帶 `calt` 與連字用到的字元。
+* `icons-<N>`：私用區（U+E000–F8FF、第 15–16 面），依大小分塊，`N` 從 1 起算。
+* `cjk-<N>`：雙格寬（East Asian Wide / Fullwidth）碼位中，落在 Noto Sans TC Google Fonts 頻率分片 `N` 內者，依檔案順序先到先得，空的分片省略。
+  `N` 是 Google 的編號，不是流水號。分片範圍放在 `sources/noto-sans-tc-web-ranges.txt`（內有出處與日期），
+  更新時重新從 Google Fonts CSS API 擷取（帶 woff2 的 User-Agent，保留 `.<N>.woff2` 有編號的規則，順序不可變）。
+* `cjk-x<N>`：其餘雙格寬碼位，依碼位順序分塊，`N` 從 1 起算。
+
+每個 `.woff2` 不得超過 65,536 bytes（`--max-bytes`），超過就建構失敗。`icons-*` 與 `cjk-x*` 依大小分塊：
+先切固定數量的碼位，超過上限就對半再切。所有分片都從完成的主字型切出，`layout_features=['*']`（保留 `calt`），
+不帶 hinting（hinted 的框線在 headless Chromium 會讓格線接不起來）。分片內的 cmap 只留該群組的碼位，保證群組互斥。
+
+`tests/check-web-zip.py out/JimMonoTC-<版本>-web.zip --masters dist` 檢查組好的 zip：檔名與群組、大小上限、群組互斥且聯集等於主字型 cmap、
+`cjk-<N>` 在 Regular / Bold（以及 Italic / Bold Italic）相同、`latin` 有 `calt`、CSS 每個檔案一條 `@font-face`（family、weight、style、
+`font-display: swap`、`unicode-range` 與檔案 cmap 一致）、授權檔齊全。
 
 ## CI 與發佈
 
@@ -69,13 +90,15 @@ git tag v0.3.0 && git push origin v0.3.0
 
 ## 驗證
 
-`scripts/verify.py dist/JimMonoTC-Regular.otf`（WOFF2 分片用 `--partial`）（`build.sh` 最後會自動執行）：
+`scripts/verify.py dist/JimMonoTC-Regular.otf`（WOFF2 分片用 `--partial`，可加 `--max-bytes 65536` 檢查大小）（`build.sh` 最後會自動執行）：
 
 * 所有 glyph advance 只可能是 `0`、`W`、`2W`；East Asian Wide/Fullwidth 碼位必為 `2W`，其餘為 `W`
 * CJK outline 不超出 `2W` cell
 * `tests/width-cases.txt`：`A`=1、`中`=2、`中文`=4、`=>`=2、`!=`=2、`===`=3、Nerd icon=1 cell 等，
   分別在 calt 開 / 關時以 HarfBuzz shaping 量總 advance
 * `tests/shaping.txt`：ligature 確實被替換（glyph 序列）且總 advance 不變
+* 框線（`─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼`）的外框碰到它所連接的 cell 邊緣（左 x ≤ 0、右 x ≥ W、下 y ≤ hhea descender、上 y ≥ hhea ascender），
+  相鄰 cell 才接得起來；只檢查直立樣式（斜體被傾斜）與完整字型，`--partial` 不檢查
 * `calt` 可由 `DFLT`、`latn` script 觸達；name table 不含 Hack / Noto / Bitstream / Vera / Nerd
 * 授權：`scripts/audit-licenses.py`（`build.sh` 建構前執行）逐項檢查 Nerd Fonts 的 14 組 glyph set 都有授權條目、授權檔案存在；
   patcher 升級後若多出未清點的 glyph set 會直接失敗。結果與尚待確認的問題見 [NOTICE.md](../NOTICE.md)；

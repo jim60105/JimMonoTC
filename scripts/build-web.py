@@ -137,6 +137,12 @@ def subset_bytes(source, codepoints):
     subsetter = subset.Subsetter(options)
     subsetter.populate(unicodes=codepoints)
     subsetter.subset(font)
+    # Glyph closure (e.g. vertical alternates) keeps cmap entries of neighbouring slices' code points
+    # that share a retained glyph; drop them so the slices stay disjoint.
+    wanted = set(codepoints)
+    for table in font["cmap"].tables:
+        if table.format != 14:
+            table.cmap = {cp: name for cp, name in table.cmap.items() if cp in wanted}
     font.flavor = "woff2"
     buf = io.BytesIO()
     font.save(buf)

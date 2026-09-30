@@ -81,9 +81,28 @@ pre, code {
 }
 ```
 
-字型已依 `unicode-range` 切成多個小檔，瀏覽器只會下載頁面實際用到的部分
-（英文約 86 KB，常用中文約 1 MB），不需要一次載入完整字型。
-四種樣式共用同一個 family 名稱，用 `font-weight`、`font-style` 切換。
+字型已依 `unicode-range` 切成多個小檔（每個 `.woff2` 都不超過 64 KiB），瀏覽器只會下載頁面實際用到的部分，
+不需要一次載入完整字型。四種樣式共用同一個 family 名稱，用 `font-weight`、`font-style` 切換。
+
+每個樣式的檔案名稱是 `JimMonoTC-<樣式>.<群組>.woff2`，群組如下（名稱固定，可以依名稱挑選）：
+
+| 群組 | 內容 | 大小（Regular） |
+| --- | --- | --- |
+| `latin` | 基本拉丁、常用標點（含連字） | 約 19 KB |
+| `latin-ext` | 拉丁擴充、組合符號、一般標點 | 約 19 KB |
+| `greek-cyrillic` | 希臘、西里爾等 | 約 31 KB |
+| `box` | 框線與方塊（U+2500–259F） | 約 3 KB |
+| `symbols` | 箭頭、數學與雜項符號 | 約 28 KB |
+| `cjk-<N>` | 中文（雙格寬字元），`N` 是 Noto Sans TC 在 Google Fonts 的頻率分片編號 | 1.8–48 KB，共 93 個 |
+| `cjk-x<N>` | 其餘中文（罕用字、擴充區） | 15–63 KB，共約 125 個 |
+| `icons-<N>` | Nerd Fonts 圖示（私用區） | 25–63 KB，共 43 個 |
+
+只需要中英文與框線的網站，取 `latin`、`latin-ext`、`greek-cyrillic`、`box`、`symbols` 與 `cjk-<N>` 即可，
+不用的群組（常見的是 `icons-*` 與 `cjk-x*`）直接刪掉，並同步刪除 `JimMonoTC.css` 中對應的 `@font-face`。
+自行託管時可用 `--url-prefix` 之外的方式改路徑：CSS 內的網址都是 `/fonts/<檔名>`。
+
+> 從 0.1.0 升級：舊的 `latin`、`icons`、`cjk-common`、`cjk-big5`、`cjk-<N>`（依數量切的）檔名都已不存在，
+> 請改用上表的群組並更新網址。
 
 ## 連字
 
