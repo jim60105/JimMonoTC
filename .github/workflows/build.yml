@@ -62,9 +62,9 @@ jobs:
       matrix:
         style: [Regular, Bold, Italic, BoldItalic]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -77,7 +77,7 @@ jobs:
       - run: python -m pip install -r requirements.txt
 
       - name: Cache pinned upstream downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/downloads
           key: sources-${{ hashFiles('sources/versions.env', 'sources/checksums.sha256') }}
@@ -93,7 +93,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: rm -f dist/JimMonoTC.css
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: dist-${{ matrix.style }}
@@ -106,7 +106,7 @@ jobs:
     needs: [version, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           merge-multiple: true
@@ -135,7 +135,7 @@ jobs:
           sha256sum ./*.zip | sed 's# \./# #' > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: JimMonoTC-${{ needs.version.outputs.label }}
           path: out/
@@ -150,7 +150,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: JimMonoTC-${{ needs.version.outputs.label }}
           path: out
