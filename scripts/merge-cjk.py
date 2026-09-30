@@ -9,11 +9,15 @@
   copied as they are and Hack / Nerd Fonts quadratics are raised to cubics
   (exact), so no curve is approximated.  --format ttf converts Noto to
   quadratics (Cu2Qu) and keeps Hack's TrueType hinting.
+* Noto has no italic.  When the reference Hack is italic (post.italicAngle != 0) the CJK
+  glyphs are slanted by the same angle, about the middle of the line, which keeps their
+  ink inside the 2W cell.
 * Glyphs that Hack defines with zero advance (combining marks) get that back;
   the Nerd Fonts patcher widens them to W, which misplaces them when shaped.
 """
 
 import argparse
+import math
 import sys
 import unicodedata
 
@@ -220,6 +224,8 @@ def main():
         raise SystemExit("no CJK codepoints selected")
 
     scale = upm / cjk["head"].unitsPerEm * args.cjk_scale
+    shear = math.tan(math.radians(-reference["post"].italicAngle))  # italicAngle is negative for a right slant
+    pivot = (font["hhea"].ascent + font["hhea"].descent) / 2
     glyph_set = cjk.getGlyphSet()
     cjk_hmtx = cjk["hmtx"]
     is_cff = args.format == "otf"
@@ -244,7 +250,8 @@ def main():
             src_advance = cjk_hmtx[src][0]
             # centre the scaled source cell inside the 2W cell
             dx = (wide - src_advance * scale) / 2
-            matrix = (scale, 0, 0, scale, dx, 0)
+            # x' = scale*x + shear*(y' - pivot) + dx,  y' = scale*y
+            matrix = (scale, 0, shear * scale, scale, dx - shear * pivot, 0)
             order.append(name)
             if is_cff:
                 rec = RecordingPen()
@@ -274,7 +281,7 @@ def main():
     font.save(args.output)
     print(
         f"merged {len(mapping)} codepoints / {len(new_names)} glyphs as {args.format} "
-        f"(W={cell}, 2W={wide}, scale={scale:.4f}); restored {restored} zero-width glyphs -> {args.output}"
+        f"(W={cell}, 2W={wide}, scale={scale:.4f}, slant={math.degrees(math.atan(shear)):.1f} deg); restored {restored} zero-width glyphs -> {args.output}"
     )
 
 

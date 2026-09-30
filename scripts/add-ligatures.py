@@ -83,8 +83,25 @@ def polygons(font, codepoint):
     return polys
 
 
+def slice_x(poly, y):
+    """Sorted x of the polygon edges crossing height y."""
+    xs = []
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        if (y0 - y) * (y1 - y) < 0:
+            xs.append(x0 + (y - y0) / (y1 - y0) * (x1 - x0))
+    return sorted(xs)
+
+
+def stretch_y(poly, old0, old1, new0, new1):
+    k = (new1 - new0) / (old1 - old0)
+    return [(x, new0 + (y - old0) * k) for x, y in poly]
+
+
 class Geometry:
-    """Measurements taken from Hack so the ligatures match its weight."""
+    """Measurements taken from Hack's `=`, `>`, so the ligatures match each weight.
+
+    Hack Italic keeps these symbols upright, so the same geometry serves Italic.
+    """
 
     HEAD_CUT = 300  # arrow head starts this far right of the chevron's open end
 
@@ -98,26 +115,40 @@ class Geometry:
         self.xmin = min(x for p in bars for x, _ in p)
         self.xmax = max(x for p in bars for x, _ in p)
         self.mid_y = (self.bar_lo[0] + self.bar_hi[1]) / 2
+        self.stroke = self.bar_lo[1] - self.bar_lo[0]  # bar thickness: 170 Regular, 235 Bold
+        self.span = self.bar_hi[1] - self.bar_lo[0]
 
         (chevron,) = polygons(font, ord(">"))
+        self.chevron = clockwise(chevron)
+        self.chev_y = (min(y for _, y in chevron), max(y for _, y in chevron))
         tip = sorted(y for x, y in chevron if x == self.xmax)
         self.tip_y = (tip[0], tip[-1])  # flat end of the chevron tip
         self.head = clockwise(clip_left(chevron, self.xmin + self.HEAD_CUT))
-        self.head_left = clockwise(mirror_x(self.head, (self.xmin + self.xmax) / 2))
+        self.axis = (self.xmin + self.xmax) / 2
+        self.head_left = clockwise(mirror_x(self.head, self.axis))
 
-        # Chevron arms fully cover a `=` bar end at this x (see =>).
-        self.bar_join_x = 620
+        # x where a `=` bar end is fully inside the chevron's arm (see =>).
+        lefts, rights = [], []
+        for y0, y1 in (self.bar_lo, self.bar_hi):
+            for y in (y0, y1):
+                xs = slice_x(chevron, y)
+                seg = [(a, b) for a, b in zip(xs[0::2], xs[1::2]) if a <= self.xmax]
+                a, b = min(seg, key=lambda ab: abs((ab[0] + ab[1]) / 2 - self.xmax / 2))
+                lefts.append(a)
+                rights.append(b)
+        self.bar_join_x = (max(lefts) + min(rights)) / 2
+        self.bar_join_left = 2 * self.axis - self.bar_join_x
 
     def left(self, n):
         """x of the leftmost ink for an n-cell ligature (last-cell frame)."""
         return self.xmin - (n - 1) * self.width
 
-    def bars(self, n, y_ranges=None, x1=None):
+    def bars(self, n, y_ranges=None, x0=None, x1=None):
         y_ranges = y_ranges or [self.bar_lo, self.bar_hi]
-        return [rect(self.left(n), y0, x1 or self.xmax, y1) for y0, y1 in y_ranges]
+        return [rect(self.left(n) if x0 is None else x0, y0, x1 or self.xmax, y1) for y0, y1 in y_ranges]
 
     def three_bars(self, n):
-        t, span = 140, 682
+        t, span = self.stroke * 140 / 170, self.span * 682 / 578
         centre = self.mid_y
         lo, hi = centre - span / 2, centre + span / 2
         mid = centre - t / 2
@@ -126,8 +157,12 @@ class Geometry:
     def slash(self, n):
         """A '/' crossing the bars, centred on the whole ligature."""
         cx = (self.left(n) + self.xmax) / 2
-        y0, y1, dx, w = 150, 1130, 170, 170
+        y0, y1, dx, w = 150, 1130, 170, self.stroke
         return [(cx - dx - w / 2, y0), (cx + dx - w / 2, y1), (cx + dx + w / 2, y1), (cx - dx + w / 2, y0)]
+
+    def head_at(self, cell, left=False):
+        """Arrow head in the cell `cell` cells before the last one."""
+        return shift(self.head_left if left else self.head, -cell * self.width)
 
 
 def build_eq2(g):
@@ -146,28 +181,72 @@ def build_ne3(g):
     return g.three_bars(3) + [g.slash(3)]
 
 
-def build_arrow_r(g):
-    return [g.head, rect(g.left(2), g.tip_y[0], g.xmax, g.tip_y[1])]
+def shaft(g, n):
+    return rect(g.left(n), g.tip_y[0], g.xmax, g.tip_y[1])
 
 
-def build_arrow_l(g):
-    head = shift(g.head_left, -g.width)
-    return [head, rect(g.left(2), g.tip_y[0], g.xmax, g.tip_y[1])]
+def arrow_right(n):
+    return lambda g: [g.head, shaft(g, n)]
 
 
-def build_fat_arrow(g):
-    return [g.head] + g.bars(2, x1=g.bar_join_x)
+def arrow_left(n):
+    return lambda g: [g.head_at(n - 1, left=True), shaft(g, n)]
+
+
+def fat_right(n):
+    return lambda g: [g.head] + g.bars(n, x1=g.bar_join_x)
+
+
+def fat_left(n):
+    return lambda g: [g.head_at(n - 1, left=True)] + g.bars(n, x0=g.bar_join_left - (n - 1) * g.width)
+
+
+def build_arrow_both(g):
+    return [g.head, g.head_at(2, left=True), shaft(g, 3)]
+
+
+def build_fat_both(g):
+    x0 = g.bar_join_left - 2 * g.width
+    return [g.head, g.head_at(2, left=True)] + g.bars(3, x0=x0, x1=g.bar_join_x)
+
+
+def _sign(g, mirrored):
+    """>= / <=  a wide chevron over a bar spanning both cells, like the mathematical sign."""
+    bar_top = g.chev_y[0] + g.stroke
+    chevron = g.chevron
+    if mirrored:
+        chevron = clockwise(mirror_x(chevron, g.axis))
+    chevron = stretch_y(chevron, *g.chev_y, bar_top + 0.45 * g.stroke, g.chev_y[1])
+    k = (g.xmax - g.left(2)) / (g.xmax - g.xmin)  # stretch the chevron across both cells
+    chevron = [(g.left(2) + (x - g.xmin) * k, y) for x, y in chevron]
+    return [chevron, rect(g.left(2), g.chev_y[0], g.xmax, bar_top)]
+
+
+def build_ge(g):
+    return _sign(g, False)
+
+
+def build_le(g):
+    return _sign(g, True)
 
 
 # (source text, outline builder).  Longer sequences first: first match wins.
 LIGATURES = [
     ("===", build_eq3),
     ("!==", build_ne3),
+    ("<=>", build_fat_both),
+    ("<->", build_arrow_both),
+    ("==>", fat_right(3)),
+    ("<==", fat_left(3)),
+    ("-->", arrow_right(3)),
+    ("<--", arrow_left(3)),
     ("==", build_eq2),
     ("!=", build_ne2),
-    ("->", build_arrow_r),
-    ("<-", build_arrow_l),
-    ("=>", build_fat_arrow),
+    ("->", arrow_right(2)),
+    ("<-", arrow_left(2)),
+    ("=>", fat_right(2)),
+    (">=", build_ge),
+    ("<=", build_le),
 ]
 
 # ---------------------------------------------------------------------------

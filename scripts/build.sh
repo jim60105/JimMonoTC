@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Build Jim Mono TC (Regular) from pinned upstream sources.
+# Build Jim Mono TC (Regular, Bold, Italic, Bold Italic) from pinned upstream sources.
 #
 #   Hack ─► add-ligatures ─► Nerd Fonts patcher (--mono) ─► merge-cjk ─► finalize ─► verify
 #                                                                            └─► WOFF2 (build-web)
 #
-# Default output is an OpenType/CFF font (.otf) with every East Asian wide code point
-# Noto Sans CJK TC has (about 43k, 54.7k glyphs in total, under the 65,535 limit).
+# Default output is one OpenType/CFF font (.otf) per style with every East Asian wide code
+# point Noto Sans CJK TC has (about 43k, 54.7k glyphs in total, under the 65,535 limit).
+# Bold / Bold Italic use Noto Sans CJK TC Bold; Noto has no italic, so the CJK glyphs of
+# Italic / Bold Italic are slanted by Hack Italic's angle.
 #
 # Requirements: python3 with fonttools[woff] + uharfbuzz (requirements.txt),
 # FontForge (for Nerd Fonts' font-patcher), curl, unzip, git; hb-shape optional.
 #
-# Usage: scripts/build.sh [--format otf|ttf] [--charset all|big5-common|big5|FILE]
-#                         [--cjk-scale N] [--split-web]
+# Usage: scripts/build.sh [--styles "Regular Bold Italic BoldItalic"] [--format otf|ttf]
+#                         [--charset all|big5-common|big5|FILE] [--cjk-scale N] [--split-web]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,22 +25,27 @@ DIST="$ROOT/dist"
 source "$ROOT/sources/versions.env"
 
 FAMILY="Jim Mono TC"
-STEM="JimMonoTC-Regular"
+STYLES="Regular Bold Italic BoldItalic"
 FORMAT="otf"
-FONT_VERSION="${FONT_VERSION:-0.1.0}"
+FONT_VERSION="${FONT_VERSION:-0.2.0}"
 CHARSET="all"
 CJK_SCALE="1.0"
 SPLIT_WEB=()
 
 while (($#)); do
   case "$1" in
+    --styles) STYLES="$2"; shift 2 ;;
     --format) FORMAT="$2"; shift 2 ;;
     --charset) CHARSET="$2"; shift 2 ;;
     --cjk-scale) CJK_SCALE="$2"; shift 2 ;;
     --split-web) SPLIT_WEB=(--split); shift ;;
-    -h|--help) sed -n '2,16p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,17p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
+done
+case "$FORMAT" in otf|ttf) ;; *) echo "--format must be otf or ttf" >&2; exit 2 ;; esac
+for style in $STYLES; do
+  case "$style" in Regular|Bold|Italic|BoldItalic) ;; *) echo "unknown style: $style" >&2; exit 2 ;; esac
 done
 
 for tool in fontforge curl unzip "$PYTHON"; do
@@ -52,33 +59,45 @@ step() { printf '\n==> %s\n' "$*"; }
 step "fetch pinned sources"
 "$ROOT/scripts/fetch-sources.sh"
 
-HACK="$CACHE/hack/Hack-Regular.ttf"
-NOTO="$CACHE/downloads/$NOTO_CJK_FILE"
-
 rm -rf "$BUILD" "$DIST"
-mkdir -p "$BUILD/patched" "$DIST"
+mkdir -p "$DIST"
 
-step "add programming ligatures to Hack"
-"$PYTHON" "$ROOT/scripts/add-ligatures.py" "$HACK" "$BUILD/hack-lig.ttf"
+build_style() { # build_style <Regular|Bold|Italic|BoldItalic>
+  local style="$1" b="$BUILD/$1" stem="JimMonoTC-$1"
+  local display="${style/BoldItalic/Bold Italic}"
+  local weight="Regular"; [[ "$style" == Bold* ]] && weight="Bold"
+  local hack="$CACHE/hack/Hack-$style.ttf"
+  local noto="$CACHE/downloads/NotoSansCJKtc-$weight-2.004.otf"
+  mkdir -p "$b/patched"
 
-step "Nerd Fonts font-patcher (--complete --mono)"
-(cd "$CACHE/nerd-fonts" && fontforge -quiet -script font-patcher --complete --mono --quiet \
-   -out "$BUILD/patched" "$BUILD/hack-lig.ttf" >"$BUILD/patcher.log" 2>&1) \
-  || { tail -20 "$BUILD/patcher.log" >&2; exit 1; }
-PATCHED="$(ls "$BUILD"/patched/*.ttf | head -n1)"
-case "$FORMAT" in otf|ttf) ;; *) echo "--format must be otf or ttf" >&2; exit 2 ;; esac
+  step "[$display] add programming ligatures to Hack"
+  "$PYTHON" "$ROOT/scripts/add-ligatures.py" "$hack" "$b/hack-lig.ttf"
 
-step "merge Noto Sans CJK TC (charset: $CHARSET)"
-"$PYTHON" "$ROOT/scripts/merge-cjk.py" "$PATCHED" "$NOTO" "$BUILD/merged.$FORMAT" \
-  --reference "$HACK" --charset "$CHARSET" --cjk-scale "$CJK_SCALE" --format "$FORMAT"
+  step "[$display] Nerd Fonts font-patcher (--complete --mono)"
+  (cd "$CACHE/nerd-fonts" && fontforge -quiet -script font-patcher --complete --mono --quiet \
+     -out "$b/patched" "$b/hack-lig.ttf" >"$b/patcher.log" 2>&1) \
+    || { tail -20 "$b/patcher.log" >&2; exit 1; }
+  local patched; patched="$(ls "$b"/patched/*.ttf | head -n1)"
 
-step "finalize names and metrics"
-"$PYTHON" "$ROOT/scripts/finalize.py" "$BUILD/merged.$FORMAT" "$DIST/$STEM.$FORMAT" \
-  --family "$FAMILY" --style Regular --version "$FONT_VERSION" \
-  --sources "Hack $HACK_VERSION; Noto Sans CJK 2.004; Nerd Fonts $NERD_FONTS_VERSION"
+  step "[$display] merge Noto Sans CJK TC $weight (charset: $CHARSET)"
+  "$PYTHON" "$ROOT/scripts/merge-cjk.py" "$patched" "$noto" "$b/merged.$FORMAT" \
+    --reference "$hack" --charset "$CHARSET" --cjk-scale "$CJK_SCALE" --format "$FORMAT"
 
-step "WOFF2 for the web"
-"$PYTHON" "$ROOT/scripts/build-web.py" "$DIST/$STEM.$FORMAT" --out-dir "$DIST" ${SPLIT_WEB[@]+"${SPLIT_WEB[@]}"}
+  step "[$display] finalize names and metrics"
+  "$PYTHON" "$ROOT/scripts/finalize.py" "$b/merged.$FORMAT" "$DIST/$stem.$FORMAT" \
+    --family "$FAMILY" --style "$display" --version "$FONT_VERSION" \
+    --sources "Hack $HACK_VERSION; Noto Sans CJK 2.004; Nerd Fonts $NERD_FONTS_VERSION"
+
+  step "[$display] WOFF2 for the web"
+  "$PYTHON" "$ROOT/scripts/build-web.py" "$DIST/$stem.$FORMAT" --out-dir "$DIST" ${SPLIT_WEB[@]+"${SPLIT_WEB[@]}"}
+}
+
+for style in $STYLES; do
+  build_style "$style"
+done
+
+# One stylesheet for every style built.
+cat "$DIST"/JimMonoTC-*.css > "$DIST/JimMonoTC.css"
 
 step "licences"
 mkdir -p "$DIST/licenses/nerd-fonts"
@@ -88,12 +107,15 @@ for f in "$CACHE"/nerd-fonts/src/glyphs/*/LICEN[CS]E*; do
 done
 
 step "verify"
-"$PYTHON" "$ROOT/scripts/verify.py" "$DIST/$STEM.$FORMAT"
-if ((${#SPLIT_WEB[@]})); then
-  "$PYTHON" "$ROOT/scripts/verify.py" --partial "$DIST"/"$STEM".*.woff2
-else
-  "$PYTHON" "$ROOT/scripts/verify.py" "$DIST/$STEM.woff2"
-fi
+for style in $STYLES; do
+  stem="JimMonoTC-$style"
+  "$PYTHON" "$ROOT/scripts/verify.py" "$DIST/$stem.$FORMAT"
+  if ((${#SPLIT_WEB[@]})); then
+    "$PYTHON" "$ROOT/scripts/verify.py" --partial "$DIST"/"$stem".*.woff2
+  else
+    "$PYTHON" "$ROOT/scripts/verify.py" "$DIST/$stem.woff2"
+  fi
+done
 
 printf '\nDone:\n'
-ls -lh "$DIST"/*."$FORMAT" "$DIST"/*.woff2 "$DIST"/*.css
+ls -lh "$DIST"/*."$FORMAT" "$DIST"/*.woff2 "$DIST"/JimMonoTC.css

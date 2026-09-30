@@ -218,7 +218,16 @@ def check_names(font, report):
             text = rec.toUnicode().lower()
             hits = [p for p in FORBIDDEN_NAME_PARTS if p in text]
             report.check(not hits, f"name ID {nid} {rec.toUnicode()!r} contains upstream name(s) {hits}")
-    report.check(font["OS/2"].fsType == 0, "OS/2.fsType should be 0 (installable)")
+    style = font["name"].getName(2, 3, 1, 0x409).toUnicode()
+    bold, italic = "Bold" in style, "Italic" in style
+    os2 = font["OS/2"]
+    report.check(os2.usWeightClass == (700 if bold else 400), f"usWeightClass {os2.usWeightClass} does not match style {style!r}")
+    report.check(bool(os2.fsSelection & 0x20) == bold, f"fsSelection bold bit does not match style {style!r}")
+    report.check(bool(os2.fsSelection & 0x01) == italic, f"fsSelection italic bit does not match style {style!r}")
+    report.check(bool(os2.fsSelection & 0x40) == (not bold and not italic), f"fsSelection regular bit does not match style {style!r}")
+    report.check(font["head"].macStyle == (int(bold) | int(italic) << 1), f"head.macStyle {font['head'].macStyle} does not match style {style!r}")
+    report.check((font["post"].italicAngle != 0) == italic, f"post.italicAngle {font['post'].italicAngle} does not match style {style!r}")
+    report.check(os2.fsType == 0, "OS/2.fsType should be 0 (installable)")
     report.check(font["post"].isFixedPitch == 1, "post.isFixedPitch should be 1")
 
 

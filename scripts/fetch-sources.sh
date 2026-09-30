@@ -25,24 +25,32 @@ download() { # download <url> <dest>
   verify "$2" || { rm -f "$2"; return 1; }
 }
 
-# Fallback for Noto: the file is ~16 MB inside a very large repository, so use a
+noto_path() { echo "$NOTO_CJK_DIR/NotoSansCJKtc-$1.otf"; }
+noto_file() { echo "NotoSansCJKtc-$1-2.004.otf"; }
+
+# Fallback for Noto: each file is ~16 MB inside a very large repository, so use a
 # blobless sparse checkout of the pinned commit instead of a full clone.
-fetch_noto_via_git() {
-  local dir="$CACHE/noto-cjk-git"
+fetch_noto_via_git() { # fetch_noto_via_git <weight>...
+  local dir="$CACHE/noto-cjk-git" w paths=()
+  for w in "$@"; do paths+=("$(noto_path "$w")"); done
   rm -rf "$dir"
   GIT_LFS_SKIP_SMUDGE=1 git clone --quiet --no-checkout --filter=blob:none "$NOTO_CJK_REPO" "$dir"
   git -C "$dir" fetch --quiet --depth 1 origin "$NOTO_CJK_COMMIT" 2>/dev/null || true
-  git -C "$dir" checkout --quiet "$NOTO_CJK_COMMIT" -- "$NOTO_CJK_PATH" 2>/dev/null \
+  git -C "$dir" checkout --quiet "$NOTO_CJK_COMMIT" -- "${paths[@]}" 2>/dev/null \
     || { git -C "$dir" fetch --quiet --unshallow origin 2>/dev/null || true
-         git -C "$dir" checkout --quiet "$NOTO_CJK_COMMIT" -- "$NOTO_CJK_PATH"; }
-  cp "$dir/$NOTO_CJK_PATH" "$CACHE/downloads/$NOTO_CJK_FILE"
+         git -C "$dir" checkout --quiet "$NOTO_CJK_COMMIT" -- "${paths[@]}"; }
+  for w in "$@"; do
+    cp "$dir/$(noto_path "$w")" "$CACHE/downloads/$(noto_file "$w")"
+    verify "$CACHE/downloads/$(noto_file "$w")"
+  done
   rm -rf "$dir"
-  verify "$CACHE/downloads/$NOTO_CJK_FILE"
 }
 
 # --- Hack ---------------------------------------------------------------
 download "$HACK_URL" "$CACHE/downloads/$HACK_ARCHIVE"
-unzip -oqj "$CACHE/downloads/$HACK_ARCHIVE" "$HACK_MEMBER" -d "$CACHE/hack"
+for style in $HACK_STYLES; do
+  unzip -oqj "$CACHE/downloads/$HACK_ARCHIVE" "ttf/Hack-$style.ttf" -d "$CACHE/hack"
+done
 
 # --- Nerd Fonts font-patcher ---------------------------------------------
 download "$NERD_FONTS_URL" "$CACHE/downloads/$NERD_FONTS_ARCHIVE"
@@ -51,10 +59,17 @@ mkdir -p "$CACHE/nerd-fonts"
 unzip -oq "$CACHE/downloads/$NERD_FONTS_ARCHIVE" -d "$CACHE/nerd-fonts"
 
 # --- Noto Sans CJK TC ------------------------------------------------------
-if ! download "${NOTO_CJK_REPO}/raw/${NOTO_CJK_COMMIT}/${NOTO_CJK_PATH}" "$CACHE/downloads/$NOTO_CJK_FILE"; then
-  echo "direct download failed, falling back to sparse git checkout" >&2
-  rm -f "$CACHE/downloads/$NOTO_CJK_FILE.part"
-  fetch_noto_via_git
+missing=()
+for w in $NOTO_CJK_WEIGHTS; do
+  file="$CACHE/downloads/$(noto_file "$w")"
+  if ! download "${NOTO_CJK_REPO}/raw/${NOTO_CJK_COMMIT}/$(noto_path "$w")" "$file"; then
+    rm -f "$file.part"
+    missing+=("$w")
+  fi
+done
+if ((${#missing[@]})); then
+  echo "direct download failed for: ${missing[*]}; falling back to sparse git checkout" >&2
+  fetch_noto_via_git "${missing[@]}"
 fi
 
 echo "sources OK: $CACHE"

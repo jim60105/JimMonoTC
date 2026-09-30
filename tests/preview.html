@@ -3,13 +3,10 @@
 <meta charset="utf-8">
 <title>Jim Mono TC preview</title>
 <style>
-  @font-face {
-    font-family: "Jim Mono TC";
-    src: url("../dist/JimMonoTC-Regular.otf") format("opentype");
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-  }
+  @font-face { font-family: "Jim Mono TC"; src: url("../dist/JimMonoTC-Regular.otf");    font-weight: 400; font-style: normal; }
+  @font-face { font-family: "Jim Mono TC"; src: url("../dist/JimMonoTC-Bold.otf");       font-weight: 700; font-style: normal; }
+  @font-face { font-family: "Jim Mono TC"; src: url("../dist/JimMonoTC-Italic.otf");     font-weight: 400; font-style: italic; }
+  @font-face { font-family: "Jim Mono TC"; src: url("../dist/JimMonoTC-BoldItalic.otf"); font-weight: 700; font-style: italic; }
   body { margin: 24px; background: #fff; color: #111; font: 14px sans-serif; }
   h2 { font-size: 13px; margin: 20px 0 4px; color: #666; font-weight: normal; }
   /* Every ch is one Hack cell; the tinted stripes make cell alignment visible. */
@@ -20,11 +17,12 @@
     background-image: repeating-linear-gradient(90deg, #ffd6e8 0, #ffd6e8 1px, transparent 1px, transparent 1ch);
   }
   pre.plain { font-variant-ligatures: none; }
+  .b { font-weight: 700; } .i { font-style: italic; }
 </style>
 <h2>Programming ligatures (calt on) — each glyph spans exactly its source cells</h2>
-<pre>=> -> <- == === != !== a=>b x->y</pre>
+<pre>=> -> <- == === != !== >= <= --> <-- ==> <== <-> <=> a=>b x->y</pre>
 <h2>Same text, ligatures off</h2>
-<pre class="plain">=> -> <- == === != !== a=>b x->y</pre>
+<pre class="plain">=> -> <- == === != !== >= <= --> <-- ==> <== <-> <=> a=>b x->y</pre>
 <h2>1 CJK = 2 cells</h2>
 <pre>ABCDEFGHIJKL
 中文字型ＡＢ，「」。
@@ -32,3 +30,8 @@ a中b文c字d
 中=>文 !== 型</pre>
 <h2>Nerd Font icons = 1 cell</h2>
 <pre>󰀁ABCD</pre>
+<h2>Regular / Bold / Italic / Bold Italic (ligatures, CJK = 2 cells, icons)</h2>
+<pre>a=>b 中文字型 &lt;=&gt; 󰀁 ABCD</pre>
+<pre class="b">a=>b 中文字型 &lt;=&gt; 󰀁 ABCD</pre>
+<pre class="i">a=>b 中文字型 &lt;=&gt; 󰀁 ABCD</pre>
+<pre class="b i">a=>b 中文字型 &lt;=&gt; 󰀁 ABCD</pre>

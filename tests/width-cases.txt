@@ -20,6 +20,15 @@ a中b	4	# Latin - CJK - Latin
 <-	2
 ==	2
 a => b	6
+>=	2
+<=	2
+-->	3
+<--	3
+==>	3
+<==	3
+<->	3
+<=>	3
+中>=文	6	# ligature between wide characters
 	1	# nf-fa-home
 	1	# powerline right arrow
 	1	# powerline branch

@@ -33,6 +33,14 @@ LICENSE_URL = "https://openfontlicense.org"
 HOMEPAGE = "https://github.com/jim60105/font"
 
 DROP_TABLES = ("PfEd", "DSIG", "TTFA", "hdmx", "LTSH", "VDMX", "prop")
+# style -> (usWeightClass, fsSelection style bits, head.macStyle)
+STYLES = {
+    "Regular": (400, 1 << 6, 0),
+    "Bold": (700, 1 << 5, 1),
+    "Italic": (400, 1 << 0, 2),
+    "Bold Italic": (700, (1 << 5) | (1 << 0), 3),
+}
+FS_SELECTION_STYLE_MASK = (1 << 0) | (1 << 5) | (1 << 6)
 FS_SELECTION_USE_TYPO_METRICS = 1 << 7
 CODEPAGE_950_TRADITIONAL_CHINESE = 1 << 20  # bit 20 of ulCodePageRange1
 
@@ -88,7 +96,7 @@ def main():
     ap.add_argument("input")
     ap.add_argument("output")
     ap.add_argument("--family", default="Jim Mono TC")
-    ap.add_argument("--style", default="Regular")
+    ap.add_argument("--style", default="Regular", choices=sorted(STYLES))
     ap.add_argument("--version", default="0.1.0", help="major.minor.patch")
     ap.add_argument("--sources", default="", help="upstream version summary for the version string")
     ap.add_argument("--subroutinize", action="store_true", help="CFF only: compress charstrings with compreffor (slow)")
@@ -107,10 +115,13 @@ def main():
 
     major, minor, *_ = (int(p) for p in args.version.split("."))
     font["head"].fontRevision = major + minor / 1000
-    font["head"].macStyle = 0
+    weight, fs_style, mac_style = STYLES[args.style]
+    font["head"].macStyle = mac_style
 
     os2 = font["OS/2"]
     os2.fsType = 0
+    os2.usWeightClass = weight
+    os2.fsSelection = (os2.fsSelection & ~FS_SELECTION_STYLE_MASK) | fs_style
     os2.achVendID = "NONE"
     os2.xAvgCharWidth = cell  # terminals derive the cell width from this / from "0"
     os2.panose.bProportion = 9  # monospaced
@@ -122,6 +133,8 @@ def main():
     os2.recalcUnicodeRanges(font)
 
     font["post"].isFixedPitch = 1
+    if not mac_style & 2:
+        font["post"].italicAngle = 0.0
     if "CFF " in font:
         finish_cff(font, args.family, args.style, ps_name, args.version, args.subroutinize)
 
