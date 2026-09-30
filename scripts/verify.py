@@ -8,6 +8,10 @@ Checks
   * tests/width-cases.txt : shaped total advance == cells * W, with and without calt
   * tests/shaping.txt     : expected glyph sequences (ligature substitution) and
                             identical total advance before / after substitution
+  * box drawing (full font, upright styles): ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ reach the cell edges the glyph
+    connects to (left x <= 0, right x >= W, bottom y <= hhea descender, top y >= hhea ascender),
+    so neighbouring cells join without gaps
+  * --max-bytes N : every file must be at most N bytes (web slices)
   * calt is reachable from the DFLT and latn scripts
   * family name carries no upstream (Hack / Noto / Bitstream Vera / Nerd) names
   * cross-check of the width cases with the `hb-shape` CLI when it is installed
@@ -34,6 +38,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # of the bundled OFL sources (Font Awesome, Pomicons, Weather Icons), Nerd Fonts, Noto, Source / Adobe.
 FORBIDDEN_NAME_PARTS = ("hack", "nerd", "noto", "bitstream", "vera", "source", "adobe", "awesome", "pomicons", "weather")
 ZERO_WIDTH_OK = ("Mn", "Me", "Cc", "Cf")
+# Box drawing glyph -> cell edges its outline must reach.
+BOX_EDGES = {
+    "─": "LR", "│": "TB", "┌": "RB", "┐": "LB", "└": "RT", "┘": "LT",
+    "├": "TBR", "┤": "TBL", "┬": "LRB", "┴": "LRT", "┼": "LRTB",
+}
 
 
 class Report:
@@ -194,6 +203,32 @@ def check_shaping_cases(font, shaper, report, W, args):
             report.check(len(names) == len(plain_names), f"shaping:{lineno} {text!r}: glyph count changed")
 
 
+def check_box_drawing(font, report, W):
+    report.section("box drawing reaches the cell edges")
+    if font["post"].italicAngle != 0:
+        print("  slanted style: skipped (checked on the upright styles)")
+        return
+    cmap, glyph_set = font.getBestCmap(), font.getGlyphSet()
+    ascender, descender = font["hhea"].ascent, font["hhea"].descent
+    for ch, edges in BOX_EDGES.items():
+        if ord(ch) not in cmap:
+            report.check(False, f"U+{ord(ch):04X} {ch} missing from the font")
+            continue
+        pen = BoundsPen(glyph_set)
+        glyph_set[cmap[ord(ch)]].draw(pen)
+        if not pen.bounds:
+            report.check(False, f"U+{ord(ch):04X} {ch} has no outline")
+            continue
+        x0, y0, x1, y1 = pen.bounds
+        reached = {"L": x0 <= 0, "R": x1 >= W, "B": y0 <= descender, "T": y1 >= ascender}
+        missed = [e for e in edges if not reached[e]]
+        report.check(
+            not missed,
+            f"U+{ord(ch):04X} {ch} bounds {pen.bounds} miss edge(s) {missed} "
+            f"(need x <= 0, x >= {W}, y <= {descender}, y >= {ascender})",
+        )
+
+
 def check_layout(font, report, partial):
     report.section("OpenType layout")
     if partial and ord("=") not in font.getBestCmap():
@@ -244,12 +279,17 @@ def verify(path, args):
     print(f"  W = {W}, 2W = {2 * W}, UPM = {font['head'].unitsPerEm}")
 
     check_metrics(font, report, W)
+    if not args.partial:
+        check_box_drawing(font, report, W)
     check_layout(font, report, args.partial)
     shaper = Shaper(font_bytes(path))
     args.cli_path = path if path.suffix in (".ttf", ".otf") else None
     check_text_cases(font, shaper, path, report, W, args)
     check_shaping_cases(font, shaper, report, W, args)
     check_names(font, report)
+    if args.max_bytes:
+        size = path.stat().st_size
+        report.check(size <= args.max_bytes, f"file is {size} bytes, over the {args.max_bytes} limit")
     if not shutil.which("hb-shape"):
         print("  (hb-shape CLI not found: used the uharfbuzz bindings only)")
     print(f"  {report.passed} checks passed, {len(report.failures)} failed")
@@ -262,6 +302,7 @@ def main():
     ap.add_argument("--width-cases", default=ROOT / "tests" / "width-cases.txt")
     ap.add_argument("--shaping", default=ROOT / "tests" / "shaping.txt")
     ap.add_argument("--partial", action="store_true", help="font is a subset: skip cases using missing code points")
+    ap.add_argument("--max-bytes", type=int, default=0, help="fail when a file is larger than this many bytes (web slices)")
     args = ap.parse_args()
     results = [verify(p, args) for p in args.fonts]
     return 0 if all(results) else 1
