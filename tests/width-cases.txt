@@ -1,0 +1,28 @@
+# text<TAB>cells<TAB># comment.  \uXXXX / \UXXXXXXXX escapes allowed.
+# Each case is shaped with and without calt; total advance must be cells * W.
+A	1
+ASCII w	7	# 5 letters + space + letter
+中	2
+中文	4
+中文字型	8
+a中b	4	# Latin - CJK - Latin
+，	2	# fullwidth comma U+FF0C
+「」	4	# corner brackets
+ａ	2	# fullwidth Latin small a U+FF41
+　	2	# ideographic space
+あア	4	# hiragana + katakana
+ㄅㄆ	4	# bopomofo
+=>	2
+!=	2
+===	3
+!==	3
+->	2
+<-	2
+==	2
+a => b	6
+	1	# nf-fa-home
+	1	# powerline right arrow
+	1	# powerline branch
+	1	# nf-fa-folder_open_o
+\U000f0001	1	# material design icon (plane 15 PUA)
+→	1	# arrows keep one cell

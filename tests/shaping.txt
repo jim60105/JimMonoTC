@@ -1,0 +1,14 @@
+# text<TAB>cells<TAB>expected glyph names after shaping with calt.
+# lig.spacer is the empty W-wide filler; the ligature outline sits in the last cell.
+=>	2	lig.spacer uni003D_uni003E.liga
+->	2	lig.spacer uni002D_uni003E.liga
+<-	2	lig.spacer uni003C_uni002D.liga
+==	2	lig.spacer uni003D_uni003D.liga
+!=	2	lig.spacer uni0021_uni003D.liga
+===	3	lig.spacer lig.spacer uni003D_uni003D_uni003D.liga
+!==	3	lig.spacer lig.spacer uni0021_uni003D_uni003D.liga
+a=>b	4	uni0061 lig.spacer uni003D_uni003E.liga uni0062
+x !== y	7	uni0078 uni0020 lig.spacer lig.spacer uni0021_uni003D_uni003D.liga uni0020 uni0079
+中=>文	6	uni4E2D lig.spacer uni003D_uni003E.liga uni6587
+=	1	uni003D
+>	1	uni003E
