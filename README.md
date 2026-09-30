@@ -11,7 +11,20 @@
 | Emoji | 系統 fallback，不併入 | – |
 
 `W` 是 Hack 半形字元的 advance width（2048 UPM 下為 1233），一個 CJK 全形字元的
-advance 恰為 `2W`。授權見 [NOTICE.md](NOTICE.md)。
+advance 恰為 `2W`。
+
+## 授權
+
+本字型以 [SIL OFL 1.1](LICENSE) 授權。上游來源的歸屬與授權逐項列在 [NOTICE.md](NOTICE.md)：
+
+| 路徑 | 內容 |
+| --- | --- |
+| `LICENSE` | 本專案自己的授權（OFL 1.1） |
+| `NOTICE.md` | 各上游來源、Nerd Fonts 14 組 glyph set 的授權清單與待確認事項 |
+| `licenses/Hack-LICENSE.txt` | Hack 上游授權（MIT + Bitstream Vera + DejaVu），須隨散布保留 |
+| `licenses/third-party/` | Nerd Fonts 壓縮檔缺少授權全文的圖示集（Apache-2.0、Devicon、Seti-UI、Font Logos），見該目錄 README |
+
+`build.sh` 會把以上檔案與 Nerd Fonts 各 glyph set 的授權檔一併複製到 `dist/licenses/`，release 的兩個 zip 都含這個目錄。
 
 ## 建構
 
@@ -68,6 +81,8 @@ Hack ─► add-ligatures.py ─► font-patcher --complete --mono ─► merge-
 * push 到 `master`：四個樣式平行建構（`--split-web`）並各自跑 `verify.py`，成品一律以 workflow artifact 保留 30 天，
   不論是否發佈，都能在 workflow run 頁面下載（`JimMonoTC-<版本或 dev-sha>`：`-otf.zip`、`-web.zip`、`SHA256SUMS.txt`）。
   每個樣式的 job 即使 verify 失敗也會上傳 `dist-<Style>`，方便檢查。
+  `font-patcher` 以乾淨的 Python 環境執行（不帶 `LD_LIBRARY_PATH` 等），避免 `actions/setup-python` 的
+  libpython 蓋掉 FontForge 內嵌的系統版而載入失敗。
 * push tag `v*`：同上，成功後建立 GitHub Release，附上兩個 zip 與 `SHA256SUMS.txt`，release notes 自動產生。
   tag 必須是 `v1.2.3` 或 `v1.2.3-rc1`（後者標為 pre-release），否則 workflow 失敗；`1.2.3` 會寫入字型的版本號。
   master 的一般建構版本號為 `0.0.0`。
@@ -149,4 +164,4 @@ pre, code, .terminal {
 * 尚未做：
   * 在實際 terminal（Windows Terminal、WezTerm、Kitty…）與 Firefox 上的實機測試
   * 其他連字（例如 `&&`：Hack 的 `&` 字面幾乎撐滿格子，縮距沒有意義，所以不做；`++` `--` `..` 等同理，收益不明顯）
-  * Hack 與 Nerd Fonts 各 glyph set 授權的逐項清點（見 NOTICE.md）
+  * [NOTICE.md](NOTICE.md)「Open points」中需要人工判斷的授權問題（如 Font Awesome 的 CC BY 4.0 / OFL 取捨）
