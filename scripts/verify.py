@@ -30,7 +30,9 @@ from fontTools.pens.boundsPen import BoundsPen
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parent.parent
-FORBIDDEN_NAME_PARTS = ("hack", "nerd", "noto", "bitstream", "vera", "source", "adobe")
+# Upstream names we must not use: Hack / Bitstream Vera (renaming clause), Reserved Font Names
+# of the bundled OFL sources (Font Awesome, Pomicons, Weather Icons), Nerd Fonts, Noto, Source / Adobe.
+FORBIDDEN_NAME_PARTS = ("hack", "nerd", "noto", "bitstream", "vera", "source", "adobe", "awesome", "pomicons", "weather")
 ZERO_WIDTH_OK = ("Mn", "Me", "Cc", "Cf")
 
 

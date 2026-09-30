@@ -86,6 +86,9 @@ git tag v0.3.0 && git push origin v0.3.0
   分別在 calt 開 / 關時以 HarfBuzz shaping 量總 advance
 * `tests/shaping.txt`：ligature 確實被替換（glyph 序列）且總 advance 不變
 * `calt` 可由 `DFLT`、`latn` script 觸達；name table 不含 Hack / Noto / Bitstream / Vera / Nerd
+* 授權：`scripts/audit-licenses.py`（`build.sh` 建構前執行）逐項檢查 Nerd Fonts 的 14 組 glyph set 都有授權條目、授權檔案存在；
+  patcher 升級後若多出未清點的 glyph set 會直接失敗。結果與尚待確認的問題見 [NOTICE.md](NOTICE.md)；
+  name table 也不得含 Reserved Font Name（Font Awesome、Pomicons、Weather Icons 等）
 * 樣式一致：`usWeightClass`、`fsSelection`（bold / italic / regular 位元）、`macStyle`、`post.italicAngle` 與 name ID 2 相符
 
 手動看瀏覽器渲染：建構後開 `tests/preview.html`（粉紅直條 = 每個 cell）。
