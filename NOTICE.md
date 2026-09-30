@@ -14,9 +14,9 @@ fails the build if an upstream name leaks into the name table.
 
 | Part | Upstream | Version | Licence |
 | --- | --- | --- | --- |
-| Latin, symbols, box drawing | [Hack](https://github.com/source-foundry/Hack) | 3.003 | MIT + Bitstream Vera License ([LICENSE-HACK.txt](LICENSE-HACK.txt)) |
+| Latin, symbols, box drawing | [Hack](https://github.com/source-foundry/Hack) (Regular, Bold, Italic, Bold Italic) | 3.003 | MIT + Bitstream Vera License ([LICENSE-HACK.txt](LICENSE-HACK.txt)) |
 | Icons | [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) `font-patcher` and glyph sets | 3.4.0 | per glyph set, see below |
-| CJK, fullwidth punctuation, kana, bopomofo | [Noto Sans CJK TC](https://github.com/notofonts/noto-cjk) | 2.004 | SIL OFL 1.1 |
+| CJK, fullwidth punctuation, kana, bopomofo | [Noto Sans CJK TC](https://github.com/notofonts/noto-cjk) (Regular, Bold) | 2.004 | SIL OFL 1.1 |
 | Programming ligatures | drawn for this project from Hack's `=` / `>` geometry (`scripts/add-ligatures.py`) | – | SIL OFL 1.1 (this project) |
 
 Exact upstream files are pinned by URL/commit and SHA-256 in `sources/`.
@@ -55,8 +55,10 @@ adopted later, review that font's licence and Reserved Font Name first.
 
 * Programming ligatures added as a `calt` feature.
 * Nerd Fonts glyph sets added by `font-patcher --complete --mono` (single cell).
-* Noto Sans CJK TC outlines converted to TrueType quadratics, scaled and centred
-  into a cell of exactly twice the Hack advance width.
+* Noto Sans CJK TC outlines scaled and centred into a cell of exactly twice the
+  Hack advance width (kept as cubic curves in the OpenType/CFF build, converted to
+  quadratics in the TrueType build).  For the Italic styles they are additionally
+  slanted by Hack Italic's angle (Noto has no italic).
 * Zero-advance combining marks that the patcher widened are restored to Hack's
   original zero advance.
 * Emoji-width code points (East Asian Wide) that Nerd Fonts maps to one-cell
