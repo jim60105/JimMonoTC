@@ -27,7 +27,7 @@ source "$ROOT/sources/versions.env"
 FAMILY="Jim Mono TC"
 STYLES="Regular Bold Italic BoldItalic"
 FORMAT="otf"
-FONT_VERSION="${FONT_VERSION:-0.1.0}"
+FONT_VERSION="${FONT_VERSION:-0.2.0}"
 CHARSET="all"
 CJK_SCALE="1.0"
 SPLIT_WEB=()
