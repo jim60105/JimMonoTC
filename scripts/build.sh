@@ -122,7 +122,7 @@ cat "$DIST"/JimMonoTC-*.css > "$DIST/JimMonoTC.css"
 
 step "licences"
 mkdir -p "$DIST/licenses/nerd-fonts"
-cp "$ROOT/LICENSE-OFL.txt" "$ROOT/LICENSE-HACK.txt" "$ROOT/NOTICE.md" "$DIST/licenses/"
+cp "$ROOT/LICENSE" "$ROOT/licenses/Hack-LICENSE.txt" "$ROOT/NOTICE.md" "$DIST/licenses/"
 for f in "$CACHE"/nerd-fonts/src/glyphs/*/LICEN[CS]E* "$CACHE"/nerd-fonts/src/glyphs/weather-icons/OFL.txt; do
   cp "$f" "$DIST/licenses/nerd-fonts/$(basename "$(dirname "$f")")-$(basename "$f")"
 done

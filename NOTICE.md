@@ -2,7 +2,7 @@
 
 **Jim Mono TC** is a modified, merged font built from the upstream works listed
 below. It is distributed under the **SIL Open Font License 1.1**
-([LICENSE-OFL.txt](LICENSE-OFL.txt)); the upstream copyright notices and licence
+([LICENSE](LICENSE)); the upstream copyright notices and licence
 terms that must travel with it are reproduced here and in the licence files.
 
 The family name is new on purpose: the Bitstream Vera License forbids modified
@@ -14,7 +14,7 @@ fails the build if an upstream name leaks into the name table.
 
 | Part | Upstream | Version | Licence |
 | --- | --- | --- | --- |
-| Latin, symbols, box drawing | [Hack](https://github.com/source-foundry/Hack) (Regular, Bold, Italic, Bold Italic) | 3.003 | MIT + Bitstream Vera License ([LICENSE-HACK.txt](LICENSE-HACK.txt)) |
+| Latin, symbols, box drawing | [Hack](https://github.com/source-foundry/Hack) (Regular, Bold, Italic, Bold Italic) | 3.003 | MIT + Bitstream Vera License ([licenses/Hack-LICENSE.txt](licenses/Hack-LICENSE.txt)) |
 | Icons | [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) `font-patcher` and glyph sets | 3.4.0 | per glyph set, see below |
 | CJK, fullwidth punctuation, kana, bopomofo | [Noto Sans CJK TC](https://github.com/notofonts/noto-cjk) (Regular, Bold) | 2.004 | SIL OFL 1.1 |
 | Programming ligatures | drawn for this project from Hack's `=` / `>` geometry (`scripts/add-ligatures.py`) | – | SIL OFL 1.1 (this project) |
@@ -25,7 +25,7 @@ Exact upstream files are pinned by URL/commit and SHA-256 in `sources/`.
 
 Hack is Copyright 2018 Source Foundry Authors (MIT License) and includes
 Bitstream Vera Sans Mono, Copyright 2003 Bitstream, Inc. (Bitstream Vera
-License). Keep [LICENSE-HACK.txt](LICENSE-HACK.txt) with every redistribution.
+License). Keep [licenses/Hack-LICENSE.txt](licenses/Hack-LICENSE.txt) with every redistribution.
 Note the Bitstream Vera clause that the font software "may be sold as part of a
 larger software package but no copy of one or more of the Font Software
 typefaces may be sold by itself".
