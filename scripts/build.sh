@@ -59,6 +59,9 @@ step() { printf '\n==> %s\n' "$*"; }
 step "fetch pinned sources"
 "$ROOT/scripts/fetch-sources.sh"
 
+step "audit glyph-set licences"
+"$PYTHON" "$ROOT/scripts/audit-licenses.py"
+
 rm -rf "$BUILD" "$DIST"
 mkdir -p "$DIST"
 
@@ -102,9 +105,11 @@ cat "$DIST"/JimMonoTC-*.css > "$DIST/JimMonoTC.css"
 step "licences"
 mkdir -p "$DIST/licenses/nerd-fonts"
 cp "$ROOT/LICENSE-OFL.txt" "$ROOT/LICENSE-HACK.txt" "$ROOT/NOTICE.md" "$DIST/licenses/"
-for f in "$CACHE"/nerd-fonts/src/glyphs/*/LICEN[CS]E*; do
+for f in "$CACHE"/nerd-fonts/src/glyphs/*/LICEN[CS]E* "$CACHE"/nerd-fonts/src/glyphs/weather-icons/OFL.txt; do
   cp "$f" "$DIST/licenses/nerd-fonts/$(basename "$(dirname "$f")")-$(basename "$f")"
 done
+mkdir -p "$DIST/licenses/third-party"
+cp "$ROOT"/licenses/third-party/* "$DIST/licenses/third-party/"
 
 step "verify"
 for style in $STYLES; do
