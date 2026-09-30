@@ -114,6 +114,17 @@ def convert_glyph(glyph_set, src_name, matrix, max_err):
     return pen.glyph(dropImpliedOnCurves=True)
 
 
+def keep_in_cell(glyph_set, src_name, matrix, wide):
+    """Slanting can push ink of glyphs that fill their cell (e.g. U+FFE3) past 0..2W: slide it back."""
+    bounds = BoundsPen(None)
+    glyph_set[src_name].draw(TransformPen(bounds, matrix))
+    if not bounds.bounds:
+        return matrix
+    x0, _, x1, _ = bounds.bounds
+    fix = -x1 + wide if x1 > wide else (-x0 if x0 < 0 else 0)
+    return matrix[:4] + (matrix[4] + fix, matrix[5])
+
+
 def restore_zero_width(font, reference):
     """Give back advance 0 to glyphs that Hack itself defines with zero advance."""
     cmap, ref_cmap = font.getBestCmap(), reference.getBestCmap()
@@ -252,6 +263,8 @@ def main():
             dx = (wide - src_advance * scale) / 2
             # x' = scale*x + shear*(y' - pivot) + dx,  y' = scale*y
             matrix = (scale, 0, shear * scale, scale, dx - shear * pivot, 0)
+            if shear:
+                matrix = keep_in_cell(glyph_set, src, matrix, wide)
             order.append(name)
             if is_cff:
                 rec = RecordingPen()
