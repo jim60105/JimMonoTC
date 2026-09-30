@@ -15,6 +15,21 @@
 <--	3	lig.spacer lig.spacer uni003C_uni002D_uni002D.liga
 >=	2	lig.spacer uni003E_uni003D.liga
 <=	2	lig.spacer uni003C_uni003D.liga
+::	2	lig.spacer uni003A_uni003A.liga
+//	2	lig.spacer uni002F_uni002F.liga
+||	2	lig.spacer uni007C_uni007C.liga
+??	2	lig.spacer uni003F_uni003F.liga
+/*	2	lig.spacer uni002F_uni002A.liga
+*/	2	lig.spacer uni002A_uni002F.liga
+>>	2	lig.spacer uni003E_uni003E.liga
+<<	2	lig.spacer uni003C_uni003C.liga
+>>>	3	lig.spacer lig.spacer uni003E_uni003E_uni003E.liga
+<<<	3	lig.spacer lig.spacer uni003C_uni003C_uni003C.liga
+|>	2	lig.spacer uni007C_uni003E.liga
+<|	2	lig.spacer uni003C_uni007C.liga
+<==>	4	lig.spacer lig.spacer lig.spacer uni003C_uni003D_uni003D_uni003E.liga
+=/=	3	lig.spacer lig.spacer uni003D_uni002F_uni003D.liga
+a::b	4	uni0061 lig.spacer uni003A_uni003A.liga uni0062
 a>=b	4	uni0061 lig.spacer uni003E_uni003D.liga uni0062
 a=>b	4	uni0061 lig.spacer uni003D_uni003E.liga uni0062
 x !== y	7	uni0078 uni0020 lig.spacer lig.spacer uni0021_uni003D_uni003D.liga uni0020 uni0079

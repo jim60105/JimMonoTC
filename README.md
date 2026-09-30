@@ -5,7 +5,7 @@
 | 範圍 | 來源 | 寬度 |
 | --- | --- | --- |
 | Latin / ASCII | [Hack](https://github.com/source-foundry/Hack) 3.003（四種樣式各取對應字重） | 1 cell (`W`) |
-| Programming ligatures（`calt`） | 本專案自繪：`==` `===` `!=` `!==` `->` `<-` `=>` `>=` `<=` `-->` `<--` `==>` `<==` `<->` `<=>` | 與來源字元同寬 |
+| Programming ligatures（`calt`） | 本專案自繪：`==` `===` `!=` `!==` `->` `<-` `=>` `>=` `<=` `-->` `<--` `==>` `<==` `<->` `<=>` `<==>` `=/=` `>>` `<<` `>>>` `<<<` `\|>` `<\|` `::` `//` `\|\|` `??` `/*` `*/` | 與來源字元同寬 |
 | Nerd Font icons | [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 3.4.0 `--mono` | 1 cell |
 | CJK / 全形標點 / 假名 / 注音 | [Noto Sans CJK TC](https://github.com/notofonts/noto-cjk) 2.004（完整：Noto 有的 East Asian Wide/Fullwidth 碼位，約 43,000 個）。Bold 系列用 Noto Bold；Noto 沒有斜體，Italic 系列的 CJK 由 Regular / Bold 依 Hack 的斜角（11°）合成斜體 | 2 cells (`2W`) |
 | Emoji | 系統 fallback，不併入 | – |
@@ -125,8 +125,10 @@ pre, code, .terminal {
 * 完整 CJK 單一字型即可容納（54,757 glyph），所以桌面端不需拆成多個字型；拆分只用於網頁分片。
   每個樣式都是各自獨立的字型檔，各自享有 65,535 的 glyph 上限。
 * Italic / Bold Italic 的 CJK 是合成斜體（機械式剪切），不是設計過的斜體。
+* `::` `//` `||` `??` `/*` `*/` 是「縮小字元間距」的連字（直接複製 Hack 該樣式的字形，曲線與斜體都原樣保留），
+  `>>` `<<` `>>>` `<<<` 是互相套疊的 chevron，`|>` `<|` 是直條加 chevron。Italic 的 `|` 是 Hack 本身斷開的設計，`||` `|>` 沿用。
 * `>=` `<=` 以橫向拉寬的 chevron 加底線繪成（近似 ≥ ≤），不是 Fira Code 的設計；斜體時連字仍直立。
 * 尚未做：
   * 在實際 terminal（Windows Terminal、WezTerm、Kitty…）與 Firefox 上的實機測試
-  * 更多 ligature（`::` `//` `/*` `|>` `<|` `>>` `<<` `&&` `||` 等）
+  * 其他連字（例如 `&&`：Hack 的 `&` 字面幾乎撐滿格子，縮距沒有意義，所以不做；`++` `--` `..` 等同理，收益不明顯）
   * Hack 與 Nerd Fonts 各 glyph set 授權的逐項清點（見 NOTICE.md）

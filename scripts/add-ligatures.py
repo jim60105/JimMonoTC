@@ -17,7 +17,9 @@ import argparse
 import sys
 
 from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
-from fontTools.pens.recordingPen import RecordingPen
+from fontTools.pens.boundsPen import BoundsPen
+from fontTools.pens.recordingPen import DecomposingRecordingPen, RecordingPen
+from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.tables import otTables
@@ -97,6 +99,14 @@ def stretch_y(poly, old0, old1, new0, new1):
     return [(x, new0 + (y - old0) * k) for x, y in poly]
 
 
+class Outline:
+    """A copy of one of Hack's own glyph outlines (curves included), moved `dx` sideways
+    (measured from the glyph's own origin, i.e. including its cell's offset)."""
+
+    def __init__(self, codepoint, dx):
+        self.codepoint, self.dx = codepoint, dx
+
+
 class Geometry:
     """Measurements taken from Hack's `=`, `>`, so the ligatures match each weight.
 
@@ -107,6 +117,9 @@ class Geometry:
 
     def __init__(self, font):
         cmap = font.getBestCmap()
+        self.cmap = cmap
+        self.glyph_set = font.getGlyphSet()
+        self._ink = {}
         self.width = font["hmtx"][cmap[ord("=")]][0]
 
         bars = sorted(polygons(font, ord("=")), key=lambda p: min(y for _, y in p))
@@ -138,6 +151,14 @@ class Geometry:
                 rights.append(b)
         self.bar_join_x = (max(lefts) + min(rights)) / 2
         self.bar_join_left = 2 * self.axis - self.bar_join_x
+
+    def ink(self, codepoint):
+        """(xmin, xmax) of a glyph's outline."""
+        if codepoint not in self._ink:
+            pen = BoundsPen(self.glyph_set)
+            self.glyph_set[self.cmap[codepoint]].draw(pen)
+            self._ink[codepoint] = (pen.bounds[0], pen.bounds[2])
+        return self._ink[codepoint]
 
     def left(self, n):
         """x of the leftmost ink for an n-cell ligature (last-cell frame)."""
@@ -201,15 +222,6 @@ def fat_left(n):
     return lambda g: [g.head_at(n - 1, left=True)] + g.bars(n, x0=g.bar_join_left - (n - 1) * g.width)
 
 
-def build_arrow_both(g):
-    return [g.head, g.head_at(2, left=True), shaft(g, 3)]
-
-
-def build_fat_both(g):
-    x0 = g.bar_join_left - 2 * g.width
-    return [g.head, g.head_at(2, left=True)] + g.bars(3, x0=x0, x1=g.bar_join_x)
-
-
 def _sign(g, mirrored):
     """>= / <=  a wide chevron over a bar spanning both cells, like the mathematical sign."""
     bar_top = g.chev_y[0] + g.stroke
@@ -230,16 +242,94 @@ def build_le(g):
     return _sign(g, True)
 
 
+def spaced(text, factor):
+    """Same glyphs as the plain text, drawn closer: every gap between ink becomes `factor` * its natural size."""
+
+    def build(g):
+        n = len(text)
+        origin = [-(n - 1 - i) * g.width for i in range(n)]  # cell i in the last-cell frame
+        inks = [g.ink(ord(c)) for c in text]
+        lefts = [o + a for o, (a, _) in zip(origin, inks)]
+        rights = [o + b for o, (_, b) in zip(origin, inks)]
+        gaps = [factor * (lefts[i + 1] - rights[i]) for i in range(n - 1)]
+        total = sum(b - a for a, b in inks) + sum(gaps)
+        x = (lefts[0] + rights[-1]) / 2 - total / 2  # keep the group centred where it was
+        out = []
+        for i, c in enumerate(text):
+            a, b = inks[i]
+            out.append(Outline(ord(c), round(x - a)))  # the outline is copied from cell origin 0
+            x += (b - a) + (gaps[i] if i < n - 1 else 0)
+        return out
+
+    return build
+
+
+def nested(text, step=0.55):
+    """>> << >>> <<<  chevrons overlapping by `step` * cell instead of standing a cell apart."""
+
+    def build(g):
+        n = len(text)
+        a, b = g.ink(ord(text[0]))
+        origin = [-(n - 1 - i) * g.width for i in range(n)]
+        pitch = step * g.width
+        total = (n - 1) * pitch + (b - a)
+        first = (origin[0] + a + origin[-1] + b) / 2 - total / 2
+        return [Outline(ord(c), round(first + i * pitch - a)) for i, c in enumerate(text)]
+
+    return build
+
+
+def pipe_chevron(text, gap=0.7):
+    """|> and <|  a bar and a chevron with its open end towards the bar."""
+
+    def build(g):
+        n = len(text)
+        origin = [-(n - 1 - i) * g.width for i in range(n)]
+        inks = [g.ink(ord(c)) for c in text]
+        gap_units = gap * g.stroke
+        total = sum(b - a for a, b in inks) + gap_units
+        x = (origin[0] + inks[0][0] + origin[-1] + inks[-1][1]) / 2 - total / 2
+        out = []
+        for i, c in enumerate(text):
+            a, b = inks[i]
+            out.append(Outline(ord(c), round(x - a)))
+            x += (b - a) + gap_units
+        return out
+
+    return build
+
+
+def arrow_both(n):
+    return lambda g: [g.head, g.head_at(n - 1, left=True), shaft(g, n)]
+
+
+def fat_both(n):
+    def build(g):
+        x0 = g.bar_join_left - (n - 1) * g.width
+        return [g.head, g.head_at(n - 1, left=True)] + g.bars(n, x0=x0, x1=g.bar_join_x)
+
+    return build
+
+
+def build_ne_slash(g):
+    """=/=  two bars with a slash."""
+    return g.bars(3) + [g.slash(3)]
+
+
 # (source text, outline builder).  Longer sequences first: first match wins.
 LIGATURES = [
     ("===", build_eq3),
     ("!==", build_ne3),
-    ("<=>", build_fat_both),
-    ("<->", build_arrow_both),
+    ("<==>", fat_both(4)),
+    ("<=>", fat_both(3)),
+    ("<->", arrow_both(3)),
     ("==>", fat_right(3)),
     ("<==", fat_left(3)),
     ("-->", arrow_right(3)),
     ("<--", arrow_left(3)),
+    ("=/=", build_ne_slash),
+    (">>>", nested(">>>")),
+    ("<<<", nested("<<<")),
     ("==", build_eq2),
     ("!=", build_ne2),
     ("->", arrow_right(2)),
@@ -247,6 +337,16 @@ LIGATURES = [
     ("=>", fat_right(2)),
     (">=", build_ge),
     ("<=", build_le),
+    (">>", nested(">>")),
+    ("<<", nested("<<")),
+    ("|>", pipe_chevron("|>")),
+    ("<|", pipe_chevron("<|")),
+    ("::", spaced("::", 0.35)),
+    ("//", spaced("//", 0.4)),
+    ("||", spaced("||", 0.5)),
+    ("??", spaced("??", 0.4)),
+    ("/*", spaced("/*", 0.45)),
+    ("*/", spaced("*/", 0.45)),
 ]
 
 # ---------------------------------------------------------------------------
@@ -254,10 +354,16 @@ LIGATURES = [
 # ---------------------------------------------------------------------------
 
 
-def make_glyph(polys):
+def make_glyph(shapes, geo):
+    """shapes: polygons (lists of points) and/or Outline copies of Hack glyphs."""
     pen = TTGlyphPen(None)
-    for poly in polys:
-        pts = [(round(x), round(y)) for x, y in clockwise(poly)]
+    for shape in shapes:
+        if isinstance(shape, Outline):
+            flat = DecomposingRecordingPen(geo.glyph_set)
+            geo.glyph_set[geo.cmap[shape.codepoint]].draw(flat)
+            flat.replay(TransformPen(pen, (1, 0, 0, 1, shape.dx, 0)))
+            continue
+        pts = [(round(x), round(y)) for x, y in clockwise(shape)]
         pen.moveTo(pts[0])
         for p in pts[1:]:
             pen.lineTo(p)
@@ -393,10 +499,10 @@ def main():
     add_glyph(font, SPACER, TTGlyphPen(None).glyph(), width)
 
     specs = []
-    for text, builder in LIGATURES:
+    for text, builder in sorted(LIGATURES, key=lambda item: -len(item[0])):  # longest match first
         names = glyph_names(font, text)
         lig_name = "_".join(names) + ".liga"
-        add_glyph(font, lig_name, make_glyph(builder(geo)), width)
+        add_glyph(font, lig_name, make_glyph(builder(geo), geo), width)
         specs.append((names, lig_name))
 
     scratch = TTFont()

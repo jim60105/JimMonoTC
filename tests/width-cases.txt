@@ -29,6 +29,22 @@ a => b	6
 <->	3
 <=>	3
 中>=文	6	# ligature between wide characters
+::	2
+//	2
+||	2
+??	2
+/*	2
+*/	2
+>>	2
+<<	2
+>>>	3
+<<<	3
+|>	2
+<|	2
+<==>	4
+=/=	3
+http://x	8
+中::文	6	# spaced ligature between wide characters
 	1	# nf-fa-home
 	1	# powerline right arrow
 	1	# powerline branch
