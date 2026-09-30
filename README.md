@@ -65,8 +65,9 @@ Hack ─► add-ligatures.py ─► font-patcher --complete --mono ─► merge-
 
 `.github/workflows/build.yml`：
 
-* push 到 `master`：四個樣式平行建構（`--split-web`）並各自跑 `verify.py`，成品以 workflow artifact 保留 14 天
-  （`JimMonoTC-dev-<sha>`：`-otf.zip`、`-web.zip`、`SHA256SUMS.txt`）。
+* push 到 `master`：四個樣式平行建構（`--split-web`）並各自跑 `verify.py`，成品一律以 workflow artifact 保留 30 天，
+  不論是否發佈，都能在 workflow run 頁面下載（`JimMonoTC-<版本或 dev-sha>`：`-otf.zip`、`-web.zip`、`SHA256SUMS.txt`）。
+  每個樣式的 job 即使 verify 失敗也會上傳 `dist-<Style>`，方便檢查。
 * push tag `v*`：同上，成功後建立 GitHub Release，附上兩個 zip 與 `SHA256SUMS.txt`，release notes 自動產生。
   tag 必須是 `v1.2.3` 或 `v1.2.3-rc1`（後者標為 pre-release），否則 workflow 失敗；`1.2.3` 會寫入字型的版本號。
   master 的一般建構版本號為 `0.0.0`。

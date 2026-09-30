@@ -1,6 +1,6 @@
 name: Build fonts
 
-# master push : build + verify, keep the fonts as workflow artifacts
+# master push : build + verify, keep the fonts as workflow artifacts (also when not released)
 # tag push v*  : same, then publish a GitHub release (tag must look like v1.2.3 or v1.2.3-rc1)
 on:
   push:
@@ -85,17 +85,21 @@ jobs:
       - name: Build and verify ${{ matrix.style }}
         env:
           FONT_VERSION: ${{ needs.version.outputs.font_version }}
-        run: |
-          scripts/build.sh --styles "${{ matrix.style }}" --split-web
-          # the combined stylesheet only knows this style; the package job rebuilds it
-          rm dist/JimMonoTC.css
+        run: scripts/build.sh --styles "${{ matrix.style }}" --split-web
+
+      # Runs even when the build or verify step failed, so the output can be inspected.
+      # The combined stylesheet only knows this style; the package job rebuilds it.
+      - name: Drop per-style combined stylesheet
+        if: ${{ !cancelled() }}
+        run: rm -f dist/JimMonoTC.css
 
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: dist-${{ matrix.style }}
           path: dist/
-          if-no-files-found: error
-          retention-days: 14
+          if-no-files-found: warn
+          retention-days: 30
 
   package:
     name: Package
@@ -136,7 +140,7 @@ jobs:
           name: JimMonoTC-${{ needs.version.outputs.label }}
           path: out/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
   release:
     name: GitHub release
