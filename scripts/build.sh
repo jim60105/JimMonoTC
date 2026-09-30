@@ -77,9 +77,27 @@ build_style() { # build_style <Regular|Bold|Italic|BoldItalic>
   "$PYTHON" "$ROOT/scripts/add-ligatures.py" "$hack" "$b/hack-lig.ttf"
 
   step "[$display] Nerd Fonts font-patcher (--complete --mono)"
-  (cd "$CACHE/nerd-fonts" && fontforge -quiet -script font-patcher --complete --mono --quiet \
+  # FontForge embeds the *system* Python.  CI's actions/setup-python exports LD_LIBRARY_PATH (and a
+  # user may export PYTHONHOME / PYTHONPATH): the loader then picks another libpython, and
+  # `import subprocess` inside font-patcher fails ("No module named '_posixsubprocess'").
+  # Run it with a clean Python environment.
+  (cd "$CACHE/nerd-fonts" && env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH \
+     fontforge -quiet -script font-patcher --complete --mono --quiet \
      -out "$b/patched" "$b/hack-lig.ttf" >"$b/patcher.log" 2>&1) \
-    || { tail -20 "$b/patcher.log" >&2; exit 1; }
+    || {
+      tail -20 "$b/patcher.log" >&2
+      {  # what the patcher saw, to diagnose environment-dependent failures
+        echo "--- font-patcher failed; python environment of fontforge:"
+        echo "python-related variables in the calling environment:"
+        env | grep -E '^(LD_LIBRARY_PATH|PYTHON)' || true
+        echo "libpython linked by fontforge (cleaned environment):"
+        env -u LD_LIBRARY_PATH ldd "$(command -v fontforge)" 2>&1 | grep -i python || true
+        echo "embedded interpreter (cleaned environment): version, prefix, _posixsubprocess builtin?"
+        env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH fontforge -lang=py \
+          -c 'import sys; print(sys.version); print(sys.prefix); print("_posixsubprocess" in sys.builtin_module_names)' 2>&1 | tail -4 || true
+      } >&2
+      exit 1
+    }
   local patched; patched="$(ls "$b"/patched/*.ttf | head -n1)"
 
   step "[$display] merge Noto Sans CJK TC $weight (charset: $CHARSET)"
