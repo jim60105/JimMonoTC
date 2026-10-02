@@ -4,16 +4,18 @@
 
 ## 建構
 
-需要 Python 3.10+（套件見 `requirements.txt`，含 `unicodedata2`、`skia-pathops`）、`curl`、`unzip`、`git`。
-不再需要 FontForge。
+需要 [`uv`](https://docs.astral.sh/uv/)（Python 3.14，固定於 `.python-version`；套件見 `pyproject.toml`，含
+`unicodedata2`、`skia-pathops`，鎖定於 `uv.lock`）、`curl`、`unzip`、`git`。不再需要 FontForge。
 `hb-shape`（HarfBuzz CLI）可選，有安裝時 `verify.py` 會額外用它交叉驗證。
 
 ```sh
-python3 -m pip install -r requirements.txt
+uv sync                            # 建立 .venv/ 並安裝鎖定套件；scripts/build.sh 預設使用 .venv/bin/python
 scripts/build.sh                 # -> dist/JimMonoTC-{Regular,Bold,Italic,BoldItalic}.{otf,woff2}, JimMonoTC.css
 scripts/build.sh --split-web     # WOFF2 依 unicode-range 分片（見「網頁使用」）
 scripts/build.sh --format ttf    # 改輸出 TrueType（二次曲線；Cascadia 的 hinting 保留在 Latin）
 ```
+
+更新依賴：改 `pyproject.toml` 後 `uv lock && uv sync`，commit 新的 `uv.lock`。
 
 選項：
 

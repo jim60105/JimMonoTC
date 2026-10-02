@@ -10,9 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 - Homepage and license URLs now point to github.com/jim60105/JimMonoTC
 - README intro, alignment sample, and download section were reworded and trimmed
+- The Python toolchain moved to `uv`: dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and the build uses `.venv/bin/python` created by `uv sync` (Python 3.14, pinned via `.python-version`)
+
+### Added
+- `uv.lock` with hashes, audited by the CI dependency-audit job via `pip-audit --require-hashes`
 
 ### Removed
 - Obsolete upgrade notes for versions 0.1.0 and 0.2.0 from the README
+- `requirements.txt` (replaced by `pyproject.toml` + `uv.lock`)
 ## [0.3.0] - 2026-10-02
 
 ### Changed

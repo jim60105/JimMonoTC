@@ -24,13 +24,16 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
-      # Fail the pipeline when a pinned build dependency has a known CVE (OSV).
-      - run: python -m pip install pip-audit
+      - uses: astral-sh/setup-uv@v7
 
-      - name: Audit requirements.txt
-        run: pip-audit -r requirements.txt
+      # Fail the pipeline when a locked build dependency has a known CVE (OSV),
+      # verified against the hashes of uv.lock.
+      - name: Audit locked dependencies
+        run: |
+          uv export --frozen --no-emit-project -o requirements.audit.txt
+          uvx pip-audit -r requirements.audit.txt --require-hashes
 
   version:
     name: Resolve version
@@ -82,15 +85,17 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
-          cache: pip
+          python-version: "3.14"
+
+      - uses: astral-sh/setup-uv@v7
 
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libharfbuzz-bin
 
-      - run: python -m pip install -r requirements.txt
+      - name: Install pinned Python toolchain
+        run: uv sync --frozen
 
       - name: Cache pinned upstream downloads
         uses: actions/cache@v6

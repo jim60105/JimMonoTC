@@ -27,21 +27,21 @@
 # Bold / Bold Italic use Noto Sans CJK TC Bold; Noto has no italic, so the CJK glyphs of
 # Italic / Bold Italic are slanted by Cascadia Italic's angle.
 #
-# Requirements: python3 with the packages of requirements.txt, curl, unzip, git;
-# hb-shape optional.
+# Requirements: uv (creates .venv/ with the packages of pyproject.toml), curl, unzip, git;
+# hb-shape optional.  A ready interpreter works too: PYTHON=/path/to/python with the deps installed.
 #
 # Usage: scripts/build.sh [--styles "Regular Bold Italic BoldItalic"] [--format otf|ttf]
 #                         [--charset all|big5-common|big5|FILE] [--cjk-scale N] [--split-web]
 #
 # Environment:
-#   PYTHON        Python interpreter (default: python3)
+#   PYTHON        Python interpreter (default: .venv/bin/python, created by `uv sync`)
 #   CACHE_DIR     Cache directory (default: <repo root>/.cache)
 #   FONT_VERSION  Version stamped into the fonts (default: 0.3.0)
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHON="${PYTHON:-python3}"
+PYTHON="${PYTHON:-$ROOT/.venv/bin/python}"
 CACHE="${CACHE_DIR:-$ROOT/.cache}"
 BUILD="$ROOT/build"
 DIST="$ROOT/dist"
@@ -105,7 +105,7 @@ for tool in curl unzip "$PYTHON"; do
     || die "required tool not installed: $tool"
 done
 "$PYTHON" -c 'import fontTools, brotli, uharfbuzz, unicodedata2, pathops' 2>/dev/null \
-  || die "install python deps first: $PYTHON -m pip install -r requirements.txt"
+  || die "create the environment first: uv sync (or point PYTHON at an interpreter with the requirements of pyproject.toml)"
 
 # --- Content processing functions --------------------------------------------
 build_style() { # build_style <Regular|Bold|Italic|BoldItalic>

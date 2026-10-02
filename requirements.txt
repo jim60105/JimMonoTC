@@ -1,5 +1,0 @@
-fonttools[woff]==4.66.1
-uharfbuzz==0.56.2
-compreffor==0.6.0
-unicodedata2==18.0.0
-skia-pathops==0.9.2
