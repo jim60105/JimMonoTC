@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Give the merged font its own identity and tidy its tables.
 
-* Replace every name record: the merged font is a modified version of Hack
-  (Bitstream Vera licence forbids "Bitstream"/"Vera" in the name) and of Noto
-  Sans CJK, so it ships under a new family name.
+* Replace every name record: the merged font is a modified version of Cascadia
+  Code (Reserved Font Name "Cascadia Code"; Microsoft's trademark / licence records
+  must go too) and of Noto Sans CJK, so it ships under a new family name.
 * Make cell-width metadata explicit for terminals (xAvgCharWidth = W, panose
   monospaced, isFixedPitch) and consistent vertical metrics.
-* Drop tables that are stale or empty after FontForge / merging.
+* Drop tables that are stale or empty after merging (DSIG, ...).
 * OpenType/CFF input: keep the CFF font names in step with the name table and
   optionally subroutinize the charstrings (--subroutinize, compreffor; slow with
   ~55k glyphs) to shrink the file.
@@ -19,15 +19,13 @@ from fontTools.ttLib import TTFont
 
 COPYRIGHT = (
     "Copyright (c) 2026 jim60105. "
-    "Contains Hack (Copyright (c) 2018 Source Foundry Authors, MIT License; "
-    "derived from Bitstream Vera Sans Mono, Copyright (c) 2003 Bitstream, Inc.), "
+    "Contains Cascadia Code (Copyright (c) 2019 - Present, Microsoft Corporation), "
     "Noto Sans CJK (Copyright 2014-2021 Adobe (http://www.adobe.com/); Noto is a trademark of Google Inc.) "
     "and Nerd Fonts glyph sets (see NOTICE.md)."
 )
 LICENSE_DESCRIPTION = (
     "This Font Software is licensed under the SIL Open Font License, Version 1.1. "
-    "It also incorporates material under the MIT License and the Bitstream Vera License "
-    "(Hack) and the licences of the Nerd Fonts glyph sets. See NOTICE.md."
+    "It also incorporates the Nerd Fonts glyph sets under their own licences. See NOTICE.md."
 )
 LICENSE_URL = "https://openfontlicense.org"
 HOMEPAGE = "https://github.com/jim60105/font"
@@ -97,7 +95,7 @@ def main():
     ap.add_argument("output")
     ap.add_argument("--family", default="Jim Mono TC")
     ap.add_argument("--style", default="Regular", choices=sorted(STYLES))
-    ap.add_argument("--version", default="0.2.0", help="major.minor.patch")
+    ap.add_argument("--version", default="0.3.0", help="major.minor.patch")
     ap.add_argument("--sources", default="", help="upstream version summary for the version string")
     ap.add_argument("--subroutinize", action="store_true", help="CFF only: compress charstrings with compreffor (slow)")
     args = ap.parse_args()

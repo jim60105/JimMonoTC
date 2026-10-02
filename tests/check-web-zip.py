@@ -5,7 +5,7 @@
 
 Asserts (see docs/BUILDING.md, "Web slices"):
   * layout       JimMonoTC-<version>-web/{JimMonoTC-<Style>.<group>.woff2, JimMonoTC.css, licenses/**}
-  * groups       latin latin-ext greek-cyrillic box symbols icons-N cjk-N cjk-xN, nothing else
+  * groups       latin latin-ext greek-cyrillic arabic-hebrew box symbols icons-N cjk-N cjk-xN, nothing else
   * bound        every .woff2 is at most 65,536 bytes
   * coverage     per style the groups are disjoint and their union is the master's cmap minus
                  U+0000 / U+000D / U+FEFF (needs --masters, the directory holding the .otf / .ttf masters)
@@ -13,7 +13,7 @@ Asserts (see docs/BUILDING.md, "Web slices"):
   * calt         the latin group has GSUB calt and the ligature sources
   * css          one @font-face per file with family, weight, style, font-display: swap, src url
                  and a unicode-range that equals the file's own cmap
-  * licences     LICENSE, NOTICE.md, Hack-LICENSE.txt, nerd-fonts/*, third-party/*
+  * licences     LICENSE, NOTICE.md, CascadiaCode-LICENSE.txt, nerd-fonts/*, third-party/*
 """
 
 import argparse
@@ -28,8 +28,8 @@ from fontTools.ttLib import TTFont
 MAX_BYTES = 65_536
 DROPPED = {0x0000, 0x000D, 0xFEFF}
 STYLES = {"Regular": (400, "normal"), "Bold": (700, "normal"), "Italic": (400, "italic"), "BoldItalic": (700, "italic")}
-FIXED = ("latin", "latin-ext", "greek-cyrillic", "box", "symbols")
-FILE_RE = re.compile(r"JimMonoTC-(Regular|Bold|Italic|BoldItalic)\.(latin|latin-ext|greek-cyrillic|box|symbols|icons-[1-9]\d*|cjk-\d+|cjk-x[1-9]\d*)\.woff2")
+FIXED = ("latin", "latin-ext", "greek-cyrillic", "arabic-hebrew", "box", "symbols")
+FILE_RE = re.compile(r"JimMonoTC-(Regular|Bold|Italic|BoldItalic)\.(latin|latin-ext|greek-cyrillic|arabic-hebrew|box|symbols|icons-[1-9]\d*|cjk-\d+|cjk-x[1-9]\d*)\.woff2")
 
 failures = []
 
@@ -86,6 +86,9 @@ def main():
     sets = {}
     for style, files in by_style.items():
         for g in FIXED:
+            # Cascadia's italics have no Arabic / Hebrew, so that group exists for the upright styles only.
+            if g == "arabic-hebrew" and "Italic" in style:
+                continue
             check(g in files, f"{style}: group {g} missing")
         seen, sets[style] = set(), {}
         for group, p in files.items():
@@ -137,7 +140,7 @@ def main():
 
     print("- licences")
     lic = root / "licenses"
-    for rel in ("LICENSE", "NOTICE.md", "Hack-LICENSE.txt"):
+    for rel in ("LICENSE", "NOTICE.md", "CascadiaCode-LICENSE.txt"):
         check((lic / rel).is_file(), f"licenses/{rel} missing")
     for sub in ("nerd-fonts", "third-party"):
         check(any((lic / sub).glob("*")), f"licenses/{sub}/ empty or missing")

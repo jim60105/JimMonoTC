@@ -46,13 +46,13 @@ fetch_noto_via_git() { # fetch_noto_via_git <weight>...
   rm -rf "$dir"
 }
 
-# --- Hack ---------------------------------------------------------------
-download "$HACK_URL" "$CACHE/downloads/$HACK_ARCHIVE"
-for style in $HACK_STYLES; do
-  unzip -oqj "$CACHE/downloads/$HACK_ARCHIVE" "ttf/Hack-$style.ttf" -d "$CACHE/hack"
+# --- Cascadia Code NF ---------------------------------------------------------
+download "$CASCADIA_URL" "$CACHE/downloads/$CASCADIA_ARCHIVE"
+for style in $CASCADIA_STYLES; do
+  unzip -oqj "$CACHE/downloads/$CASCADIA_ARCHIVE" "ttf/static/CascadiaCodeNF-$style.ttf" -d "$CACHE/cascadia"
 done
 
-# --- Nerd Fonts font-patcher ---------------------------------------------
+# --- Nerd Fonts glyph sources ---------------------------------------------
 download "$NERD_FONTS_URL" "$CACHE/downloads/$NERD_FONTS_ARCHIVE"
 rm -rf "$CACHE/nerd-fonts"
 mkdir -p "$CACHE/nerd-fonts"

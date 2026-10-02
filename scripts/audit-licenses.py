@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Audit the Nerd Fonts glyph sets that font-patcher --complete puts into the font.
+"""Audit the Nerd Fonts glyph sets in the font.
+
+The icons come from Cascadia Code NF (Microsoft's own build of the Nerd Fonts glyph sets),
+and prepare-base.py fills the icons Cascadia lacks from the same sets in the pinned
+Nerd Fonts archive, so the font holds exactly the sets of `font-patcher --complete`.
 
 Reads the glyph-set table out of the pinned `font-patcher`, and fails when
 
@@ -8,8 +12,8 @@ Reads the glyph-set table out of the pinned `font-patcher`, and fails when
   * a licence file that we claim to ship is missing.
 
 With --font FONT it also counts, per set, how many code points of the built font
-lie in the range that the set was written to (informational: Hack, Noto and the
-ligatures own the rest).  --markdown prints the table used in NOTICE.md.
+lie in the range that the set was written to (informational: Cascadia and Noto
+own the rest).  --markdown prints the table used in NOTICE.md.
 
 Licence information comes from the licence files in the FontPatcher archive, the
 copyright strings in the glyph fonts, and Nerd Fonts' own licence audit
@@ -17,12 +21,12 @@ copyright strings in the glyph fonts, and Nerd Fonts' own licence audit
 """
 
 import argparse
-import re
 import sys
 from pathlib import Path
 
+from nerd_sets import GLYPHS, patch_sets
+
 ROOT = Path(__file__).resolve().parent.parent
-GLYPHS = "src/glyphs"  # inside the patcher archive
 
 # patcher file name -> (project, licence, copyright holder, licence file, where the file is)
 # where: "archive" = FontPatcher archive (GLYPHS + file), "repo" = licenses/third-party, None = none available
@@ -43,25 +47,6 @@ LICENSES = {
     "codicons/codicon.ttf": ("Codicons", "CC-BY-4.0", "Microsoft Corporation", "codicons/LICENSE.txt", "archive"),
 }
 DISABLED_OK = {"materialdesign/materialdesignicons-webfont.ttf"}  # 'Material legacy', hard-wired off in the patcher
-
-ROW = re.compile(
-    r"\{'Enabled':\s*(?P<enabled>[^,]+?),\s*'Name':\s*\"(?P<name>[^\"]+)\",\s*'Filename':\s*\"(?P<file>[^\"]+)\","
-    r"\s*'Exact':\s*(?P<exact>True|False),\s*'SymStart':\s*(?P<start>0[xX][0-9A-Fa-f]+),\s*'SymEnd':\s*(?P<end>0[xX][0-9A-Fa-f]+),"
-    r"\s*'SrcStart':\s*(?P<dest>None|0[xX][0-9A-Fa-f]+)"
-)
-
-
-def patch_sets(patcher):
-    rows = []
-    for m in ROW.finditer(patcher.read_text(encoding="utf-8")):
-        start, end = int(m["start"], 16), int(m["end"], 16)
-        dest = start if m["exact"] == "True" or m["dest"] == "None" else int(m["dest"], 16)
-        rows.append({
-            "enabled": m["enabled"].strip(), "name": m["name"], "file": m["file"],
-            "lo": dest, "hi": dest + (end - start),
-        })
-    return rows
-
 
 def license_path(cache, third_party, where, name):
     if where == "archive":

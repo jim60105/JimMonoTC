@@ -2,18 +2,20 @@
 """Verify cell widths, shaping and metadata of a built font (OTF, TTF or WOFF2).
 
 Checks
-  * every glyph advance is 0, W or 2W; East Asian Wide/Fullwidth code points are 2W,
-    everything else W (zero only for combining marks / controls, as in Hack)
+  * every glyph advance is 0, W or 2W; East Asian Wide/Fullwidth code points are 2W
+    (except U+2630, kept one cell on purpose), everything else W (zero only for
+    combining marks / controls); East Asian Width from unicodedata2 (current Unicode)
   * CJK outlines stay inside their 2W cell
   * tests/width-cases.txt : shaped total advance == cells * W, with and without calt
   * tests/shaping.txt     : expected glyph sequences (ligature substitution) and
                             identical total advance before / after substitution
-  * box drawing (full font, upright styles): ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ reach the cell edges the glyph
+  * box drawing (full font): ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ reach the cell edges the glyph
     connects to (left x <= 0, right x >= W, bottom y <= hhea descender, top y >= hhea ascender),
-    so neighbouring cells join without gaps
+    so neighbouring cells join without gaps; block elements and Powerline dividers fill
+    exactly the line (hhea descender .. ascender), not Cascadia's taller Windows cell
   * --max-bytes N : every file must be at most N bytes (web slices)
   * calt is reachable from the DFLT and latn scripts
-  * family name carries no upstream (Hack / Noto / Bitstream Vera / Nerd) names
+  * family name carries no upstream (Cascadia / Microsoft / Noto / Nerd ...) names
   * cross-check of the width cases with the `hb-shape` CLI when it is installed
 
 W is the advance of "A".  Text in the case files may use \\uXXXX / \\UXXXXXXXX escapes.
@@ -26,23 +28,30 @@ import re
 import shutil
 import subprocess
 import sys
-import unicodedata
 from pathlib import Path
 
 import uharfbuzz as hb
+import unicodedata2 as unicodedata
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parent.parent
-# Upstream names we must not use: Hack / Bitstream Vera (renaming clause), Reserved Font Names
-# of the bundled OFL sources (Font Awesome, Pomicons, Weather Icons), Nerd Fonts, Noto, Source / Adobe.
-FORBIDDEN_NAME_PARTS = ("hack", "nerd", "noto", "bitstream", "vera", "source", "adobe", "awesome", "pomicons", "weather")
+# Upstream names we must not use: Reserved Font Names of the bundled OFL sources (Cascadia Code,
+# Font Awesome, Pomicons, Weather Icons), Microsoft, Nerd Fonts (and its "Caskaydia" rename),
+# Noto, Source / Adobe; Hack / Bitstream Vera from earlier releases.
+FORBIDDEN_NAME_PARTS = (
+    "cascadia", "caskaydia", "microsoft", "nerd", "noto", "source", "adobe",
+    "awesome", "pomicons", "weather", "hack", "bitstream", "vera",
+)
+KEEP_ONE_CELL = {0x2630}  # wide since Unicode 16, kept one cell on purpose (merge-cjk.py)
 ZERO_WIDTH_OK = ("Mn", "Me", "Cc", "Cf")
 # Box drawing glyph -> cell edges its outline must reach.
 BOX_EDGES = {
     "─": "LR", "│": "TB", "┌": "RB", "┐": "LB", "└": "RT", "┘": "LT",
     "├": "TBR", "┤": "TBL", "┬": "LRB", "┴": "LRT", "┼": "LRTB",
 }
+# Glyphs that must span exactly the line, bottom to top (prepare-base.py fits them).
+FULL_HEIGHT = "█▌▐░▒▓\ue0b0\ue0b2\ue0b4\ue0b6\ue0d6\ue0d7\U0001fbce"
 
 
 class Report:
@@ -138,7 +147,7 @@ def check_metrics(font, report, W):
     for cp, name in cmap.items():
         ch = chr(cp)
         adv = hmtx[name][0]
-        wide = unicodedata.east_asian_width(ch) in ("W", "F")
+        wide = unicodedata.east_asian_width(ch) in ("W", "F") and cp not in KEEP_ONE_CELL
         if wide:
             ok = adv == 2 * W
             bad_wide += not ok
@@ -160,7 +169,7 @@ def check_metrics(font, report, W):
     report.check(not bad_wide, f"{bad_wide} wide/fullwidth code points are not 2W ({'; '.join(examples[:3])})")
     report.check(not bad_narrow, f"{bad_narrow} narrow code points are not W ({'; '.join(examples[:3])})")
     report.check(not bad_outline, f"{bad_outline} CJK outlines exceed their cell ({'; '.join(examples[:3])})")
-    wide_count = sum(unicodedata.east_asian_width(chr(cp)) in ("W", "F") for cp in cmap)
+    wide_count = sum(unicodedata.east_asian_width(chr(cp)) in ("W", "F") and cp not in KEEP_ONE_CELL for cp in cmap)
     print(f"  {len(cmap)} code points checked ({wide_count} wide)")
 
 
@@ -192,7 +201,7 @@ def check_shaping_cases(font, shaper, report, W, args):
         if has_names:
             report.check(names == expected, f"shaping:{lineno} {text!r}: got {names}, expected {expected}")
         else:  # subset WOFF2 without glyph names: only "was anything substituted?" is observable
-            wants_lig = any(".liga" in n for n in expected)
+            wants_lig = any(n.endswith((".liga", ".seq")) for n in expected)
             report.check(
                 (names != plain_names) == wants_lig and len(names) == len(expected),
                 f"shaping:{lineno} {text!r}: substitution mismatch (ligature expected: {wants_lig})",
@@ -205,9 +214,6 @@ def check_shaping_cases(font, shaper, report, W, args):
 
 def check_box_drawing(font, report, W):
     report.section("box drawing reaches the cell edges")
-    if font["post"].italicAngle != 0:
-        print("  slanted style: skipped (checked on the upright styles)")
-        return
     cmap, glyph_set = font.getBestCmap(), font.getGlyphSet()
     ascender, descender = font["hhea"].ascent, font["hhea"].descent
     for ch, edges in BOX_EDGES.items():
@@ -226,6 +232,17 @@ def check_box_drawing(font, report, W):
             not missed,
             f"U+{ord(ch):04X} {ch} bounds {pen.bounds} miss edge(s) {missed} "
             f"(need x <= 0, x >= {W}, y <= {descender}, y >= {ascender})",
+        )
+    for ch in FULL_HEIGHT:
+        if ord(ch) not in cmap:
+            report.check(False, f"U+{ord(ch):04X} missing from the font")
+            continue
+        pen = BoundsPen(glyph_set)
+        glyph_set[cmap[ord(ch)]].draw(pen)
+        _, y0, _, y1 = pen.bounds
+        report.check(
+            (round(y0), round(y1)) == (descender, ascender),
+            f"U+{ord(ch):04X} spans y {y0}..{y1}, not the line {descender}..{ascender}",
         )
 
 

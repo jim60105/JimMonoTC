@@ -14,8 +14,9 @@ together cover the whole cmap except U+0000, U+000D and U+FEFF.  The group names
 interface (downstream projects pick slices by name); do not rename them.
 
   latin, latin-ext,       one-cell, non-private-use code points, claimed in this order by the
-  greek-cyrillic, box,    WINDOWS below (latin carries the ligature sources).  A one-cell code
-  symbols                 point outside every window fails the build.
+  greek-cyrillic,         WINDOWS below (latin carries the ligature sources).  A one-cell code
+  arabic-hebrew, box,     point outside every window fails the build.
+  symbols
   icons-N                 private use (U+E000-F8FF, planes 15-16), chunked by size, N from 1
   cjk-N                   two-cell (East Asian Wide / Fullwidth) code points inside Noto Sans TC's
                           Google Fonts frequency range N (sources/noto-sans-tc-web-ranges.txt);
@@ -28,15 +29,18 @@ import argparse
 import io
 import statistics
 import sys
-import unicodedata
 from pathlib import Path
 
+import unicodedata2 as unicodedata
 from fontTools import subset
 from fontTools.ttLib import TTFont
 
 
+KEEP_ONE_CELL = {0x2630}  # wide since Unicode 16, one cell in this font (merge-cjk.py)
+
+
 def is_wide(cp):
-    return unicodedata.east_asian_width(chr(cp)) in ("W", "F")
+    return unicodedata.east_asian_width(chr(cp)) in ("W", "F") and cp not in KEEP_ONE_CELL
 
 
 def is_private_use(cp):
@@ -57,12 +61,13 @@ WINDOWS = (
         (0x2122, 0x2122), (0x2190, 0x2193), (0xFFFD, 0xFFFD),
     )),
     ("latin-ext", (
-        (0x0100, 0x036F), (0x0E3F, 0x0E3F), (0x1E00, 0x1EFF), (0x2000, 0x218F),
-        (0x2C60, 0x2C7F),
+        (0x0100, 0x036F), (0x0E3F, 0x0E3F), (0x1D00, 0x1DFF), (0x1E00, 0x1EFF), (0x2000, 0x218F),
+        (0x2C60, 0x2C7F), (0xFB00, 0xFB06),
     )),
-    ("greek-cyrillic", ((0x0370, 0x03FF), (0x0400, 0x058F), (0x10A0, 0x10FF), (0x1F00, 0x1FFF))),
-    ("box", ((0x2500, 0x259F),)),
-    ("symbols", ((0x2190, 0x23FF), (0x25A0, 0x2BFF), (0x2E00, 0x2E7F))),
+    ("greek-cyrillic", ((0x0370, 0x03FF), (0x0400, 0x052F), (0x10A0, 0x10FF), (0x1F00, 0x1FFF))),
+    ("arabic-hebrew", ((0x0590, 0x06FF), (0x0750, 0x077F), (0x08A0, 0x08FF), (0xFB1D, 0xFDFF), (0xFE70, 0xFEFE))),
+    ("box", ((0x2500, 0x259F), (0x1CC00, 0x1CEBF), (0x1FB00, 0x1FBFF))),
+    ("symbols", ((0x2190, 0x243F), (0x25A0, 0x2BFF), (0x2E00, 0x2E7F))),
 )
 
 

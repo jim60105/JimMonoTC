@@ -2,11 +2,14 @@
 
 給程式碼與 terminal 用的等寬字型，**中文字剛好是英文字母的兩倍寬**，對齊不會跑掉。
 
-* **Latin**：[Hack](https://github.com/source-foundry/Hack)，清楚好讀的程式字型
+* **Latin**：[Cascadia Code](https://github.com/microsoft/cascadia-code)，Microsoft 為 Windows Terminal 設計的程式字型，
+  也涵蓋希臘、西里爾、阿拉伯、希伯來文、框線、方塊元素與 Legacy Computing 符號
 * **中文（繁體）**：[Noto Sans CJK TC](https://github.com/notofonts/noto-cjk)，含常用字、次常用字、假名、注音與全形標點
-* **圖示**：[Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 的 Powerline、Font Awesome、Devicons 等，每個佔一格
-* **連字（ligatures）**：`==` `!=` `=>` `->` `>=` `::` `|>` 等 29 種
-* **四種樣式**：Regular、Bold、Italic、Bold Italic
+* **圖示**：Cascadia Code 內建的 Powerline 與 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 圖示，
+  並補齊到 Nerd Fonts 3.4.0 的完整集合（約 1 萬個），每個佔一格、大小風格一致
+* **連字（ligatures）**：Cascadia Code 的整套連字，包括 `->` `=>` `<==>` `|->` 等箭頭與 `!=` `::` `&&` `</>` 等
+* **箭頭**：Cascadia 沒有的 Unicode 箭頭（`↖` `⇒` `⇄` `⤴` `⬅` 等）取自 Noto Sans CJK，調整成單格並對齊 Cascadia 箭頭的線條粗細
+* **四種樣式**：Regular、Bold、Italic（Cascadia 的真斜體）、Bold Italic
 * 同一份字型可用在本機（`.otf`）與網頁（`.woff2`）
 
 ```text
@@ -31,7 +34,7 @@ abcdefghij      ← 每個英文字母 1 格
 
 ### 安裝字型
 
-解壓縮 `-otf.zip` 後，四個 `.otf` 一起安裝（每個約 14 MB，因為內含完整中文）：
+解壓縮 `-otf.zip` 後，四個 `.otf` 一起安裝（每個約 15 MB，因為內含完整中文）：
 
 * **Windows**：全選檔案 → 右鍵 → 為所有使用者安裝
 * **macOS**：雙擊檔案 → 安裝字體
@@ -88,38 +91,46 @@ pre, code {
 
 | 群組 | 內容 | 大小（Regular） |
 | --- | --- | --- |
-| `latin` | 基本拉丁、常用標點（含連字） | 約 19 KB |
-| `latin-ext` | 拉丁擴充、組合符號、一般標點 | 約 19 KB |
-| `greek-cyrillic` | 希臘、西里爾等 | 約 31 KB |
-| `box` | 框線與方塊（U+2500–259F） | 約 3 KB |
-| `symbols` | 箭頭、數學與雜項符號 | 約 28 KB |
+| `latin` | 基本拉丁、常用標點（含連字） | 約 27 KB |
+| `latin-ext` | 拉丁擴充、組合符號、一般標點 | 約 23 KB |
+| `greek-cyrillic` | 希臘、西里爾等 | 約 15 KB |
+| `arabic-hebrew` | 阿拉伯文、希伯來文（Italic 樣式沒有這個群組） | 約 49 KB |
+| `box` | 框線、方塊元素與 Legacy Computing 符號 | 約 18 KB |
+| `symbols` | 箭頭、數學與雜項符號 | 約 17 KB |
 | `cjk-<N>` | 中文（雙格寬字元），`N` 是 Noto Sans TC 在 Google Fonts 的頻率分片編號 | 1.8–48 KB，共 93 個 |
 | `cjk-x<N>` | 其餘中文（罕用字、擴充區） | 15–63 KB，共約 125 個 |
-| `icons-<N>` | Nerd Fonts 圖示（私用區） | 25–63 KB，共 43 個 |
+| `icons-<N>` | Nerd Fonts 圖示（私用區） | 23–64 KB，共 44 個 |
 
 只需要中英文與框線的網站，取 `latin`、`latin-ext`、`greek-cyrillic`、`box`、`symbols` 與 `cjk-<N>` 即可，
-不用的群組（常見的是 `icons-*` 與 `cjk-x*`）直接刪掉，並同步刪除 `JimMonoTC.css` 中對應的 `@font-face`。
+不用的群組（常見的是 `arabic-hebrew`、`icons-*` 與 `cjk-x*`）直接刪掉，並同步刪除 `JimMonoTC.css` 中對應的 `@font-face`。
 自行託管時可用 `--url-prefix` 之外的方式改路徑：CSS 內的網址都是 `/fonts/<檔名>`。
 
+> 從 0.2.0 升級：群組名稱不變，新增 `arabic-hebrew`；各群組的內容與 `icons-<N>`、`cjk-x<N>` 的數量有變，請重新部署整組檔案與 `JimMonoTC.css`。
+>
 > 從 0.1.0 升級：舊的 `latin`、`icons`、`cjk-common`、`cjk-big5`、`cjk-<N>`（依數量切的）檔名都已不存在，
 > 請改用上表的群組並更新網址。
 
 ## 連字
 
+使用 Cascadia Code 的整套連字，例如：
+
 | 類別 | 連字 |
 | --- | --- |
-| 比較 | `==` `===` `!=` `!==` `>=` `<=` `=/=` |
-| 箭頭 | `->` `<-` `=>` `-->` `<--` `==>` `<==` `<->` `<=>` `<==>` |
-| 其他 | `::` `//` `\|\|` `??` `/*` `*/` `>>` `<<` `>>>` `<<<` `\|>` `<\|` |
+| 箭頭 | `->` `<-` `=>` `-->` `<--` `==>` `<==` `<->` `<=>` `<==>` `\|->` `<-\|` `\|=>` `->>` `<<-` `=>>` |
+| 比較 | `==` `===` `!=` `!==` `>=` `<=` `<>` |
+| 其他 | `::` `:::` `:=` `//` `///` `/*` `*/` `&&` `\|\|` `??` `?.` `..` `...` `\|>` `<\|` `</` `/>` `</>` `<!--` `++` `**` `>>=` `www` 等 |
 
 連字與原本的字元同寬，所以 terminal 逐格繪製也不會錯位。不想要連字時關閉軟體的 ligature 選項即可。
+Cascadia 的 stylistic set 也都保留，例如 `ss19`（斜線零）、`ss20`（控制字元圖示），Italic 另有 `ss01`（草寫體）。
 
 ## 已知限制
 
-* **Italic 的中文是合成斜體**：Noto Sans CJK 沒有斜體，Italic 與 Bold Italic 的中文是把 Regular / Bold 依 Hack 的斜角（11°）傾斜而成，英文則是 Hack 原本設計的斜體。
-* **小字級**：字型沒有 TrueType hinting。Windows 低解析度螢幕上約 9–14 px 的小字可能較不銳利；macOS 與高解析度螢幕不受影響。
-* **檔案較大**：每個樣式約 14 MB，因為包含完整中文字集。
-* **`>=` `<=`** 是自行繪製的近似 ≥ ≤，不是其他字型的設計。
+* **Italic 的中文是合成斜體**：Noto Sans CJK 沒有斜體，Italic 與 Bold Italic 的中文是把 Regular / Bold 依 Cascadia 的斜角（10°）傾斜而成，英文則是 Cascadia 原本設計的斜體。
+* **補上的箭頭是改造過的 Noto 字形**：Noto 的箭頭原本是全形設計，縮成單格後加粗到和 Cascadia 的 `→` 一樣粗，造型仍是 Noto 的。Noto 也沒有的箭頭由系統字型顯示。
+* **`☰`（U+2630）保持單格**：Unicode 16 把它改成雙格寬，但多數 terminal 仍當單格，Powerline / Nerd Fonts 也當單格圖示使用。
+* **小字級**：OTF 沒有 TrueType hinting。Windows 低解析度螢幕上約 9–14 px 的小字可能較不銳利；macOS 與高解析度螢幕不受影響。
+* **檔案較大**：每個樣式約 15 MB，因為包含完整中文字集。
+* **Italic 沒有阿拉伯文、希伯來文**：Cascadia 的斜體本身就沒有這兩種文字。
 
 ## 授權
 

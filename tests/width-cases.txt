@@ -42,7 +42,12 @@ a => b	6
 |>	2
 <|	2
 <==>	4
-=/=	3
+<==>	4
+|->	3
+&&	2
+...	3
+<!--	4
+www	3
 http://x	8
 中::文	6	# spaced ligature between wide characters
 	1	# nf-fa-home
@@ -51,3 +56,12 @@ http://x	8
 	1	# nf-fa-folder_open_o
 \U000f0001	1	# material design icon (plane 15 PUA)
 →	1	# arrows keep one cell
+⇒	1	# arrow from Noto Sans CJK (add-arrows.py)
+↖⤴⬅	3	# more Noto arrows
+☰	1	# U+2630 kept one cell (wide since Unicode 16)
+\ue7c6	1	# devicon newer than Cascadia's Nerd Fonts (prepare-base.py)
+\ued00	1	# Font Awesome icon newer than Cascadia's
+\uee00\uee01\uee02	3	# progress bar pieces
+\ue0d6	1	# powerline inverse divider
+█▀▄	3	# block elements
+\U0001fb00	1	# symbols for legacy computing

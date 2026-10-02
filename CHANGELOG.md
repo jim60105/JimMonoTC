@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Changed: The Latin base is now [Cascadia Code](https://github.com/microsoft/cascadia-code) 2407.24 (the static "NF" build) instead of Hack 3.003. **Breaking:** the cell is narrower (W = 1200 units instead of 1233 at 2048 UPM, two cells = 2400), glyph shapes change, and the Italic is Cascadia's true italic (10°, cursive forms in `ss01`); the CJK of Italic / Bold Italic is slanted by that angle.
+- Changed: The programming ligatures are Cascadia Code's own (arrows such as `->` `=>` `<==>` `|->` `<-|` `->>`, and `!=` `===` `::` `&&` `||` `</>` `<!--` `www` and many more), replacing the 29 ligatures drawn for 0.1 / 0.2. Every ligature still keeps the width of the characters it replaces.
+- Changed: Powerline symbols and Nerd Font icons are Cascadia Code's; the icons it lacks are added from the Nerd Fonts 3.4.0 glyph sets, scaled with Cascadia's own rule, so the complete set of `font-patcher --complete` is present in one consistent style. FontForge and `font-patcher` are no longer needed to build.
+- Changed: Block elements, Symbols for Legacy Computing (and Supplement) and Powerline dividers fill exactly one line; the Windows metrics equal the line height, so line spacing is the same on every platform.
+- Changed: East Asian Width comes from `unicodedata2` (current Unicode) in the build and the checks. U+2630 ☰ stays one cell; U+2B1B and U+2B1C (wide, one-cell in Cascadia) are left to the system emoji font like U+25FD, U+25FE and U+26A1.
+- Changed: The web slices gain an `arabic-hebrew` group (upright styles only, Cascadia's italics have no Arabic / Hebrew); `box` now also holds Symbols for Legacy Computing, `symbols` the control pictures. Existing group names are unchanged.
+
+### Added
+- Added: Arrows that Cascadia lacks (↖ ↗ ↘ ↙ ⇐ ⇒ ⇔ ⇄ ⇅ ⇆ ⇦ ⇧ ⇨ ⇩ ⤴ ⤵ ⬅ ⬆ ⬇ ⮕ and more, 23 in all) from Noto Sans CJK TC Black, one cell wide and emboldened to the stroke of Cascadia's arrows in each style.
+- Added: Greek, Cyrillic, Arabic, Hebrew, Vietnamese, Braille and Symbols for Legacy Computing coverage from Cascadia Code.
+- Added: `scripts/verify.py` checks that block elements and Powerline dividers span exactly the line, and checks box drawing on the italic styles too.
+
+### Removed
+- Removed: Hack, `scripts/add-ligatures.py` and `licenses/Hack-LICENSE.txt`. Hack's Armenian and Georgian letters and most of its arrows are no longer in the font (system fonts render them).
+
 ## [0.2.0] - 2026-09-30
 
 ### Changed

@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Merge Noto Sans CJK TC into the (ligature + Nerd Font) Hack build.
+"""Merge Noto Sans CJK TC into the prepared Cascadia Code NF base.
 
 * Only full-width characters (East Asian Width W/F) that the base font lacks are
-  added, so Latin / Nerd Font / box-drawing glyphs always come from Hack.
+  added, so Latin / Nerd Font / box-drawing glyphs always come from Cascadia.
 * Noto's outlines are scaled to the base UPM and centred in a cell exactly 2 * W
-  wide (W = Hack's half-width advance).
+  wide (W = Cascadia's half-width advance).
 * --format otf (default) writes an OpenType/CFF font: Noto's cubic curves are
-  copied as they are and Hack / Nerd Fonts quadratics are raised to cubics
-  (exact), so no curve is approximated.  --format ttf converts Noto to
-  quadratics (Cu2Qu) and keeps Hack's TrueType hinting.
-* Noto has no italic.  When the reference Hack is italic (post.italicAngle != 0) the CJK
-  glyphs are slanted by the same angle, about the middle of the line, which keeps their
+  copied as they are and Cascadia's quadratics are raised to cubics (exact), so
+  no curve is approximated.  --format ttf converts Noto to quadratics (Cu2Qu) and
+  keeps Cascadia's TrueType hinting.
+* Noto has no italic.  When the base is italic (post.italicAngle != 0) the CJK glyphs
+  are slanted by the same angle, about the middle of the line, which keeps their
   ink inside the 2W cell.
-* Glyphs that Hack defines with zero advance (combining marks) get that back;
-  the Nerd Fonts patcher widens them to W, which misplaces them when shaped.
+* East Asian Width comes from unicodedata2 (current Unicode), not from the Python
+  runtime, whose older tables call many newer one-cell symbols wide.
 """
 
 import argparse
 import math
 import sys
-import unicodedata
 
+import unicodedata2 as unicodedata
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.cu2quPen import Cu2QuPen
@@ -125,21 +125,13 @@ def keep_in_cell(glyph_set, src_name, matrix, wide):
     return matrix[:4] + (matrix[4] + fix, matrix[5])
 
 
-def restore_zero_width(font, reference):
-    """Give back advance 0 to glyphs that Hack itself defines with zero advance."""
-    cmap, ref_cmap = font.getBestCmap(), reference.getBestCmap()
-    hmtx, ref_hmtx = font["hmtx"], reference["hmtx"]
-    fixed = 0
-    for cp, name in cmap.items():
-        ref_name = ref_cmap.get(cp)
-        if ref_name and ref_hmtx[ref_name][0] == 0 and hmtx[name][0] != 0:
-            hmtx.metrics[name] = (0, hmtx[name][1])
-            fixed += 1
-    return fixed
+# Wide code points whose one-cell glyph is kept anyway: U+2630 (the "hamburger" menu
+# icon of Powerline / Nerd Fonts), wide only since Unicode 16 and one cell in most terminals.
+KEEP_ONE_CELL = {0x2630}
 
 
 def drop_wide_conflicts(font, cell):
-    """Unmap East Asian Wide code points whose glyph is not 2W wide.
+    """Unmap East Asian Wide code points whose glyph is not 2W wide (except KEEP_ONE_CELL).
 
     Terminals allot two cells to these (mostly emoji, e.g. U+26A1); a one-cell
     glyph would misalign the line, so let the system emoji font handle them.
@@ -149,7 +141,7 @@ def drop_wide_conflicts(font, cell):
     for table in font["cmap"].tables:
         if not table.isUnicode():
             continue
-        for cp in [c for c, n in table.cmap.items() if is_wide(c) and hmtx[n][0] != 2 * cell]:
+        for cp in [c for c, n in table.cmap.items() if is_wide(c) and c not in KEEP_ONE_CELL and hmtx[n][0] != 2 * cell]:
             del table.cmap[cp]
             dropped.append(cp)
     return sorted(set(dropped))
@@ -205,10 +197,9 @@ def install_cff(font, order, strings, cell, wide):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("base", help="Nerd-Font-patched Hack TTF")
+    ap.add_argument("base", help="Cascadia Code NF TTF from prepare-base.py / add-arrows.py")
     ap.add_argument("cjk", help="Noto Sans CJK TC OTF")
     ap.add_argument("output")
-    ap.add_argument("--reference", required=True, help="original Hack TTF (source of zero-width glyphs)")
     ap.add_argument(
         "--charset",
         default="all",
@@ -221,7 +212,6 @@ def main():
     args = ap.parse_args()
 
     font = TTFont(args.base)
-    reference = TTFont(args.reference)
     cjk = TTFont(args.cjk, lazy=True)
 
     upm = font["head"].unitsPerEm
@@ -235,7 +225,7 @@ def main():
         raise SystemExit("no CJK codepoints selected")
 
     scale = upm / cjk["head"].unitsPerEm * args.cjk_scale
-    shear = math.tan(math.radians(-reference["post"].italicAngle))  # italicAngle is negative for a right slant
+    shear = math.tan(math.radians(-font["post"].italicAngle))  # italicAngle is negative for a right slant
     pivot = (font["hhea"].ascent + font["hhea"].descent) / 2
     glyph_set = cjk.getGlyphSet()
     cjk_hmtx = cjk["hmtx"]
@@ -287,14 +277,13 @@ def main():
         glyf.glyphOrder = order
     add_to_cmap(font, mapping)
 
-    restored = restore_zero_width(font, reference)
     dropped = drop_wide_conflicts(font, cell)
     if dropped:
         print("unmapped 1-cell glyphs at wide code points: " + " ".join(f"U+{cp:04X}" for cp in dropped))
     font.save(args.output)
     print(
         f"merged {len(mapping)} codepoints / {len(new_names)} glyphs as {args.format} "
-        f"(W={cell}, 2W={wide}, scale={scale:.4f}, slant={math.degrees(math.atan(shear)):.1f} deg); restored {restored} zero-width glyphs -> {args.output}"
+        f"(W={cell}, 2W={wide}, scale={scale:.4f}, slant={math.degrees(math.atan(shear)):.1f} deg) -> {args.output}"
     )
 
 

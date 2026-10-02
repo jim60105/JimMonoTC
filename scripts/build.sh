@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # Build Jim Mono TC (Regular, Bold, Italic, Bold Italic) from pinned upstream sources.
 #
-#   Hack ─► add-ligatures ─► Nerd Fonts patcher (--mono) ─► merge-cjk ─► finalize ─► verify
-#                                                                            └─► WOFF2 (build-web)
+#   Cascadia Code NF ─► prepare-base ─► add-arrows ─► merge-cjk ─► finalize ─► verify
+#                     (cell glyphs,    (Noto)        (Noto)                  └─► WOFF2 (build-web)
+#                      Nerd icons)
 #
 # Default output is one OpenType/CFF font (.otf) per style with every East Asian wide code
-# point Noto Sans CJK TC has (about 43k, 54.7k glyphs in total, under the 65,535 limit).
+# point Noto Sans CJK TC has (about 43k, 57.5k glyphs in total, under the 65,535 limit).
+# Latin, ligatures, Powerline and Nerd Font symbols are Cascadia Code's (the "NF" build);
 # Bold / Bold Italic use Noto Sans CJK TC Bold; Noto has no italic, so the CJK glyphs of
-# Italic / Bold Italic are slanted by Hack Italic's angle.
+# Italic / Bold Italic are slanted by Cascadia Italic's angle.
 #
-# Requirements: python3 with fonttools[woff] + uharfbuzz (requirements.txt),
-# FontForge (for Nerd Fonts' font-patcher), curl, unzip, git; hb-shape optional.
+# Requirements: python3 with the packages of requirements.txt, curl, unzip, git;
+# hb-shape optional.
 #
 # Usage: scripts/build.sh [--styles "Regular Bold Italic BoldItalic"] [--format otf|ttf]
 #                         [--charset all|big5-common|big5|FILE] [--cjk-scale N] [--split-web]
@@ -27,7 +29,7 @@ source "$ROOT/sources/versions.env"
 FAMILY="Jim Mono TC"
 STYLES="Regular Bold Italic BoldItalic"
 FORMAT="otf"
-FONT_VERSION="${FONT_VERSION:-0.2.0}"
+FONT_VERSION="${FONT_VERSION:-0.3.0}"
 CHARSET="all"
 CJK_SCALE="1.0"
 SPLIT_WEB=()
@@ -48,10 +50,10 @@ for style in $STYLES; do
   case "$style" in Regular|Bold|Italic|BoldItalic) ;; *) echo "unknown style: $style" >&2; exit 2 ;; esac
 done
 
-for tool in fontforge curl unzip "$PYTHON"; do
+for tool in curl unzip "$PYTHON"; do
   command -v "$tool" >/dev/null || { echo "missing required tool: $tool" >&2; exit 1; }
 done
-"$PYTHON" -c 'import fontTools, brotli, uharfbuzz' 2>/dev/null \
+"$PYTHON" -c 'import fontTools, brotli, uharfbuzz, unicodedata2, pathops' 2>/dev/null \
   || { echo "install python deps first: $PYTHON -m pip install -r requirements.txt" >&2; exit 1; }
 
 step() { printf '\n==> %s\n' "$*"; }
@@ -69,45 +71,25 @@ build_style() { # build_style <Regular|Bold|Italic|BoldItalic>
   local style="$1" b="$BUILD/$1" stem="JimMonoTC-$1"
   local display="${style/BoldItalic/Bold Italic}"
   local weight="Regular"; [[ "$style" == Bold* ]] && weight="Bold"
-  local hack="$CACHE/hack/Hack-$style.ttf"
+  local cascadia="$CACHE/cascadia/CascadiaCodeNF-$style.ttf"
   local noto="$CACHE/downloads/NotoSansCJKtc-$weight-2.004.otf"
-  mkdir -p "$b/patched"
+  local noto_arrows="$CACHE/downloads/NotoSansCJKtc-Black-2.004.otf"
+  mkdir -p "$b"
 
-  step "[$display] add programming ligatures to Hack"
-  "$PYTHON" "$ROOT/scripts/add-ligatures.py" "$hack" "$b/hack-lig.ttf"
+  step "[$display] fit cell glyphs, complete the Nerd Font icons"
+  "$PYTHON" "$ROOT/scripts/prepare-base.py" "$cascadia" "$b/base.ttf" --nerd-fonts "$CACHE/nerd-fonts"
 
-  step "[$display] Nerd Fonts font-patcher (--complete --mono)"
-  # FontForge embeds the *system* Python.  CI's actions/setup-python exports LD_LIBRARY_PATH (and a
-  # user may export PYTHONHOME / PYTHONPATH): the loader then picks another libpython, and
-  # `import subprocess` inside font-patcher fails ("No module named '_posixsubprocess'").
-  # Run it with a clean Python environment.
-  (cd "$CACHE/nerd-fonts" && env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH \
-     fontforge -quiet -script font-patcher --complete --mono --quiet \
-     -out "$b/patched" "$b/hack-lig.ttf" >"$b/patcher.log" 2>&1) \
-    || {
-      tail -20 "$b/patcher.log" >&2
-      {  # what the patcher saw, to diagnose environment-dependent failures
-        echo "--- font-patcher failed; python environment of fontforge:"
-        echo "python-related variables in the calling environment:"
-        env | grep -E '^(LD_LIBRARY_PATH|PYTHON)' || true
-        echo "libpython linked by fontforge (cleaned environment):"
-        env -u LD_LIBRARY_PATH ldd "$(command -v fontforge)" 2>&1 | grep -i python || true
-        echo "embedded interpreter (cleaned environment): version, prefix, _posixsubprocess builtin?"
-        env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH fontforge -lang=py \
-          -c 'import sys; print(sys.version); print(sys.prefix); print("_posixsubprocess" in sys.builtin_module_names)' 2>&1 | tail -4 || true
-      } >&2
-      exit 1
-    }
-  local patched; patched="$(ls "$b"/patched/*.ttf | head -n1)"
+  step "[$display] arrows from Noto Sans CJK TC Black"
+  "$PYTHON" "$ROOT/scripts/add-arrows.py" "$b/base.ttf" "$noto_arrows" "$b/arrows.ttf"
 
   step "[$display] merge Noto Sans CJK TC $weight (charset: $CHARSET)"
-  "$PYTHON" "$ROOT/scripts/merge-cjk.py" "$patched" "$noto" "$b/merged.$FORMAT" \
-    --reference "$hack" --charset "$CHARSET" --cjk-scale "$CJK_SCALE" --format "$FORMAT"
+  "$PYTHON" "$ROOT/scripts/merge-cjk.py" "$b/arrows.ttf" "$noto" "$b/merged.$FORMAT" \
+    --charset "$CHARSET" --cjk-scale "$CJK_SCALE" --format "$FORMAT"
 
   step "[$display] finalize names and metrics"
   "$PYTHON" "$ROOT/scripts/finalize.py" "$b/merged.$FORMAT" "$DIST/$stem.$FORMAT" \
     --family "$FAMILY" --style "$display" --version "$FONT_VERSION" \
-    --sources "Hack $HACK_VERSION; Noto Sans CJK 2.004; Nerd Fonts $NERD_FONTS_VERSION"
+    --sources "Cascadia Code $CASCADIA_VERSION; Noto Sans CJK 2.004; Nerd Fonts $NERD_FONTS_VERSION"
 
   step "[$display] WOFF2 for the web"
   "$PYTHON" "$ROOT/scripts/build-web.py" "$DIST/$stem.$FORMAT" --out-dir "$DIST" ${SPLIT_WEB[@]+"${SPLIT_WEB[@]}"}
@@ -122,7 +104,7 @@ cat "$DIST"/JimMonoTC-*.css > "$DIST/JimMonoTC.css"
 
 step "licences"
 mkdir -p "$DIST/licenses/nerd-fonts"
-cp "$ROOT/LICENSE" "$ROOT/licenses/Hack-LICENSE.txt" "$ROOT/NOTICE.md" "$DIST/licenses/"
+cp "$ROOT/LICENSE" "$ROOT/licenses/CascadiaCode-LICENSE.txt" "$ROOT/NOTICE.md" "$DIST/licenses/"
 for f in "$CACHE"/nerd-fonts/src/glyphs/*/LICEN[CS]E* "$CACHE"/nerd-fonts/src/glyphs/weather-icons/OFL.txt; do
   cp "$f" "$DIST/licenses/nerd-fonts/$(basename "$(dirname "$f")")-$(basename "$f")"
 done

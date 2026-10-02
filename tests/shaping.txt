@@ -1,38 +1,63 @@
-# text<TAB>cells<TAB>expected glyph names after shaping with calt.
-# lig.spacer is the empty W-wide filler; the ligature outline sits in the last cell.
-=>	2	lig.spacer uni003D_uni003E.liga
-->	2	lig.spacer uni002D_uni003E.liga
-<-	2	lig.spacer uni003C_uni002D.liga
-==	2	lig.spacer uni003D_uni003D.liga
-!=	2	lig.spacer uni0021_uni003D.liga
-===	3	lig.spacer lig.spacer uni003D_uni003D_uni003D.liga
-!==	3	lig.spacer lig.spacer uni0021_uni003D_uni003D.liga
-<=>	3	lig.spacer lig.spacer uni003C_uni003D_uni003E.liga
-<->	3	lig.spacer lig.spacer uni003C_uni002D_uni003E.liga
-==>	3	lig.spacer lig.spacer uni003D_uni003D_uni003E.liga
-<==	3	lig.spacer lig.spacer uni003C_uni003D_uni003D.liga
--->	3	lig.spacer lig.spacer uni002D_uni002D_uni003E.liga
-<--	3	lig.spacer lig.spacer uni003C_uni002D_uni002D.liga
->=	2	lig.spacer uni003E_uni003D.liga
-<=	2	lig.spacer uni003C_uni003D.liga
-::	2	lig.spacer uni003A_uni003A.liga
-//	2	lig.spacer uni002F_uni002F.liga
-||	2	lig.spacer uni007C_uni007C.liga
-??	2	lig.spacer uni003F_uni003F.liga
-/*	2	lig.spacer uni002F_uni002A.liga
-*/	2	lig.spacer uni002A_uni002F.liga
->>	2	lig.spacer uni003E_uni003E.liga
-<<	2	lig.spacer uni003C_uni003C.liga
->>>	3	lig.spacer lig.spacer uni003E_uni003E_uni003E.liga
-<<<	3	lig.spacer lig.spacer uni003C_uni003C_uni003C.liga
-|>	2	lig.spacer uni007C_uni003E.liga
-<|	2	lig.spacer uni003C_uni007C.liga
-<==>	4	lig.spacer lig.spacer lig.spacer uni003C_uni003D_uni003D_uni003E.liga
-=/=	3	lig.spacer lig.spacer uni003D_uni002F_uni003D.liga
-a::b	4	uni0061 lig.spacer uni003A_uni003A.liga uni0062
-a>=b	4	uni0061 lig.spacer uni003E_uni003D.liga uni0062
-a=>b	4	uni0061 lig.spacer uni003D_uni003E.liga uni0062
-x !== y	7	uni0078 uni0020 lig.spacer lig.spacer uni0021_uni003D_uni003D.liga uni0020 uni0079
-中=>文	6	uni4E2D lig.spacer uni003D_uni003E.liga uni6587
-=	1	uni003D
->	1	uni003E
+# text<TAB>cells<TAB>expected glyph names after shaping with calt (Cascadia Code's own ligatures).
+# Cascadia keeps one W-wide glyph per source character: "LIG" is its empty filler, *.liga a ligature
+# drawn over the preceding cells; arrows are chains of *.seq pieces (start / middle / end).
+=>	2	equal_start.seq greater_equal_end.seq
+->	2	hyphen_start.seq greater_hyphen_end.seq
+<-	2	less_hyphen_start.seq hyphen_end.seq
+==	2	equal_equal.liga LIG
+!=	2	exclam_equal.liga LIG
+===	3	equal_equal_equal.liga LIG LIG
+!==	3	exclam_equal_equal.liga LIG LIG
+>=	2	greater_equal.liga LIG
+<=	2	less_equal.liga LIG
+-->	3	hyphen_start.seq hyphen_middle.seq greater_hyphen_end.seq
+<--	3	less_hyphen_start.seq hyphen_middle.seq hyphen_end.seq
+==>	3	equal_start.seq equal_middle.seq greater_equal_end.seq
+<==	3	less_equal_start.seq equal_middle.seq equal_end.seq
+<->	3	less_hyphen_start.seq hyphen_middle.seq greater_hyphen_end.seq
+<=>	3	less_equal_start.seq equal_middle.seq greater_equal_end.seq
+<==>	4	less_equal_start.seq equal_middle.seq equal_middle.seq greater_equal_end.seq
+|->	3	bar_hyphen_start.seq hyphen_middle.seq greater_hyphen_end.seq
+<-|	3	less_hyphen_start.seq hyphen_middle.seq bar_hyphen_end.seq
+|=>	3	bar_equal_start.seq equal_middle.seq greater_equal_end.seq
+=>>	3	equal_greater_greater.liga LIG LIG
+<<-	3	less_less_hyphen_start.seq LIG hyphen_end.seq
+->>	3	hyphen_start.seq greater_greater_hyphen_end.seq LIG
+::	2	colon_colon.liga LIG
+:::	3	colon_colon_colon.liga LIG LIG
+:=	2	colon_equal.liga LIG
+//	2	slash_slash.liga LIG
+///	3	slash_slash_slash.liga LIG LIG
+/*	2	slash_asterisk.liga LIG
+*/	2	asterisk_slash.liga LIG
+&&	2	ampersand_ampersand.liga LIG
+||	2	bar_bar.liga LIG
+??	2	question_question.liga LIG
+?.	2	question_period.liga LIG
+..	2	period_period.liga LIG
+...	3	period_period_period.liga LIG LIG
+..<	3	period_period_less.liga LIG LIG
+|>	2	bar_greater.liga LIG
+<|	2	less_bar.liga LIG
+<>	2	less_greater.liga LIG
+</	2	less_slash.liga LIG
+/>	2	slash_greater.liga LIG
+</>	3	less_slash_greater.liga LIG LIG
+<!--	4	less_exclam_hyphen_hyphen.liga LIG LIG LIG
+#{	2	numbersign_braceleft.liga LIG
+#[	2	numbersign_bracketleft.liga LIG
+++	2	plus_plus.liga LIG
++++	3	plus_plus_plus.liga LIG LIG
+**	2	asterisk_asterisk.liga LIG
+***	3	asterisk_asterisk_asterisk.liga LIG LIG
+>>=	3	greater_greater_equal.liga LIG LIG
+<<=	3	less_less_equal.liga LIG equal
+www	3	w_w_w.liga LIG LIG
+0xFF	4	zero x F F
+a::b	4	a colon_colon.liga LIG b
+a=>b	4	a equal_start.seq greater_equal_end.seq b
+x !== y	7	x space exclam_equal_equal.liga LIG LIG space y
+中=>文	6	uni4E2D equal_start.seq greater_equal_end.seq uni6587
+=	1	equal
+>	1	greater
+a->b->c	7	a hyphen_start.seq greater_hyphen_end.seq b hyphen_start.seq greater_hyphen_end.seq c
