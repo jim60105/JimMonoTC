@@ -1,6 +1,8 @@
 # Jim Mono TC
 
-給程式碼與 terminal 用的等寬字型，**中文字剛好是英文字母的兩倍寬**，對齊不會跑掉。
+融合等寬字型，**中文調整為英數的兩倍寬**，對齊再也不會跑掉！
+
+## 食譜
 
 * **Latin**：[Cascadia Code](https://github.com/microsoft/cascadia-code)，Microsoft 為 Windows Terminal 設計的程式字型，
   也涵蓋希臘、西里爾、阿拉伯、希伯來文、框線、方塊元素與 Legacy Computing 符號
@@ -13,8 +15,8 @@
 * 同一份字型可用在本機（`.otf`）與網頁（`.woff2`）
 
 ```text
-abcdefghij      ← 每個英文字母 1 格
-中文字元對齊     ← 每個中文字 2 格
+012abcdefghi     ← 每個英數 1 格
+中文字元對齊     ← 每個中文 2 格
 ```
 
 ## 下載
@@ -104,11 +106,6 @@ pre, code {
 只需要中英文與框線的網站，取 `latin`、`latin-ext`、`greek-cyrillic`、`box`、`symbols` 與 `cjk-<N>` 即可，
 不用的群組（常見的是 `arabic-hebrew`、`icons-*` 與 `cjk-x*`）直接刪掉，並同步刪除 `JimMonoTC.css` 中對應的 `@font-face`。
 自行託管時可用 `--url-prefix` 之外的方式改路徑：CSS 內的網址都是 `/fonts/<檔名>`。
-
-> 從 0.2.0 升級：群組名稱不變，新增 `arabic-hebrew`；各群組的內容與 `icons-<N>`、`cjk-x<N>` 的數量有變，請重新部署整組檔案與 `JimMonoTC.css`。
->
-> 從 0.1.0 升級：舊的 `latin`、`icons`、`cjk-common`、`cjk-big5`、`cjk-<N>`（依數量切的）檔名都已不存在，
-> 請改用上表的群組並更新網址。
 
 ## 連字
 

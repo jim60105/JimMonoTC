@@ -28,7 +28,7 @@ LICENSE_DESCRIPTION = (
     "It also incorporates the Nerd Fonts glyph sets under their own licences. See NOTICE.md."
 )
 LICENSE_URL = "https://openfontlicense.org"
-HOMEPAGE = "https://github.com/jim60105/font"
+HOMEPAGE = "https://github.com/jim60105/JimMonoTC"
 
 DROP_TABLES = ("PfEd", "DSIG", "TTFA", "hdmx", "LTSH", "VDMX", "prop")
 # style -> (usWeightClass, fsSelection style bits, head.macStyle)

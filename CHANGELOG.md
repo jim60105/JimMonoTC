@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Homepage and license URLs now point to github.com/jim60105/JimMonoTC
+- README intro, alignment sample, and download section were reworded and trimmed
+
+### Removed
+- Obsolete upgrade notes for versions 0.1.0 and 0.2.0 from the README
 ## [0.3.0] - 2026-10-02
 
 ### Changed
