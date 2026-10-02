@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check an assembled JimMonoTC-<version>-web.zip against the web slice contract.
 
-  tests/check-web-zip.py out/JimMonoTC-0.3.0-web.zip [--masters dist]
+  tests/check-web-zip.py out/JimMonoTC-0.4.0-web.zip [--masters dist]
 
 Asserts (see docs/BUILDING.md, "Web slices"):
   * layout       JimMonoTC-<version>-web/{JimMonoTC-<Style>.<group>.woff2, JimMonoTC.css, licenses/**}

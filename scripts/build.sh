@@ -36,7 +36,7 @@
 # Environment:
 #   PYTHON        Python interpreter (default: .venv/bin/python, created by `uv sync`)
 #   CACHE_DIR     Cache directory (default: <repo root>/.cache)
-#   FONT_VERSION  Version stamped into the fonts (default: 0.3.0)
+#   FONT_VERSION  Version stamped into the fonts (default: 0.4.0)
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
@@ -51,7 +51,7 @@ source "$ROOT/sources/versions.env"
 FAMILY="Jim Mono TC"
 STYLES="Regular Bold Italic BoldItalic"
 FORMAT="otf"
-FONT_VERSION="${FONT_VERSION:-0.3.0}"
+FONT_VERSION="${FONT_VERSION:-0.4.0}"
 CHARSET="all"
 CJK_SCALE="1.0"
 SPLIT_WEB=()

@@ -95,7 +95,7 @@ def main():
     ap.add_argument("output")
     ap.add_argument("--family", default="Jim Mono TC")
     ap.add_argument("--style", default="Regular", choices=sorted(STYLES))
-    ap.add_argument("--version", default="0.3.0", help="major.minor.patch")
+    ap.add_argument("--version", default="0.4.0", help="major.minor.patch")
     ap.add_argument("--sources", default="", help="upstream version summary for the version string")
     ap.add_argument("--subroutinize", action="store_true", help="CFF only: compress charstrings with compreffor (slow)")
     args = ap.parse_args()

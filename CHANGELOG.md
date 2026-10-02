@@ -7,17 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-02
+
 ### Changed
-- Homepage and license URLs now point to github.com/jim60105/JimMonoTC
-- README intro, alignment sample, and download section were reworded and trimmed
-- The Python toolchain moved to `uv`: dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and the build uses `.venv/bin/python` created by `uv sync` (Python 3.14, pinned via `.python-version`)
+- Changed: Homepage and license URLs now point to github.com/jim60105/JimMonoTC; the corrected homepage is also stamped into the fonts' metadata.
+- Changed: README intro, alignment sample, and download section were reworded and trimmed.
+- Changed: The Python toolchain moved to `uv`: dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and the build uses `.venv/bin/python` created by `uv sync` (Python 3.14, pinned via `.python-version`). `requirements.txt` is gone.
+- Changed: The build scripts gained usage headers, colour-coded error reporting, fail-fast checks for missing tools and invalid options, and cleanup of partial downloads on failure.
 
 ### Added
-- `uv.lock` with hashes, audited by the CI dependency-audit job via `pip-audit --require-hashes`
+- Added: A screenshot showcase of the font at the top of the README: a terminal window with a Chinese-identifier quicksort sample whose comments align purely on character cells, plus a box-drawing table, backfilled arrows, single-cell Nerd Font icons and Cascadia ligatures.
+- Added: `uv.lock` with hashes, so every build uses an exact, auditable dependency set.
+- Added: A CI dependency-audit job that runs `pip-audit --require-hashes` against the locked set and gates the build matrix, so packaging and release are skipped when a pinned build dependency has a known CVE.
+
+### Security
+- Security: Pinned the CI `setup-uv` action to the immutable tag `v10.2.0` (upstream stopped publishing floating major tags at v8).
 
 ### Removed
-- Obsolete upgrade notes for versions 0.1.0 and 0.2.0 from the README
-- `requirements.txt` (replaced by `pyproject.toml` + `uv.lock`)
+- Removed: Obsolete upgrade notes for versions 0.1.0 and 0.2.0 from the README.
+- Removed: `requirements.txt` (replaced by `pyproject.toml` + `uv.lock`).
+
 ## [0.3.0] - 2026-10-02
 
 ### Changed
@@ -62,7 +71,8 @@ First release.
 - Added: Licence audit of all Nerd Fonts glyph sets, with `NOTICE.md` and the licence texts shipped in `licenses/`.
 - Added: User-facing `README.md` and developer documentation in `docs/BUILDING.md`.
 
-[Unreleased]: https://github.com/jim60105/JimMonoTC/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jim60105/JimMonoTC/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jim60105/JimMonoTC/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jim60105/JimMonoTC/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jim60105/JimMonoTC/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jim60105/JimMonoTC/releases/tag/v0.1.0
