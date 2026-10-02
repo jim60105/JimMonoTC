@@ -2,6 +2,8 @@
 
 融合等寬字型，**中文調整為英數的兩倍寬**，對齊再也不會跑掉！
 
+![Jim Mono TC 預覽：中文識別符的程式碼、框線表格、連字、箭頭與 Nerd Font 圖示，註解全靠字元格子對齊](docs/showcase.png)
+
 ## 食譜
 
 * **Latin**：[Cascadia Code](https://github.com/microsoft/cascadia-code)，Microsoft 為 Windows Terminal 設計的程式字型，
