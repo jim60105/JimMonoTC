@@ -26,7 +26,8 @@ jobs:
         with:
           python-version: "3.14"
 
-      - uses: astral-sh/setup-uv@v7
+      # setup-uv publishes immutable tags only (no @vN major tags since v8).
+      - uses: astral-sh/setup-uv@v10.2.0
 
       # Fail the pipeline when a locked build dependency has a known CVE (OSV),
       # verified against the hashes of uv.lock.
@@ -87,7 +88,8 @@ jobs:
         with:
           python-version: "3.14"
 
-      - uses: astral-sh/setup-uv@v7
+      # setup-uv publishes immutable tags only (no @vN major tags since v8).
+      - uses: astral-sh/setup-uv@v10.2.0
 
       - name: Install system packages
         run: |
