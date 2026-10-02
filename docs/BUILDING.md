@@ -103,7 +103,7 @@ Cascadia Code NF ─► prepare-base.py ─► add-arrows.py ─► merge-cjk.py
   master 的一般建構版本號為 `0.0.0`。
 
 ```sh
-git tag v0.3.0 && git push origin v0.3.0
+git tag v0.4.0 && git push origin v0.4.0
 ```
 
 ## 驗證

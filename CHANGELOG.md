@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-02
+
 ### Changed
 - Changed: The Latin base is now [Cascadia Code](https://github.com/microsoft/cascadia-code) 2407.24 (the static "NF" build) instead of Hack 3.003. **Breaking:** the cell is narrower (W = 1200 units instead of 1233 at 2048 UPM, two cells = 2400), glyph shapes change, and the Italic is Cascadia's true italic (10°, cursive forms in `ss01`); the CJK of Italic / Bold Italic is slanted by that angle.
 - Changed: The programming ligatures are Cascadia Code's own (arrows such as `->` `=>` `<==>` `|->` `<-|` `->>`, and `!=` `===` `::` `&&` `||` `</>` `<!--` `www` and many more), replacing the 29 ligatures drawn for 0.1 / 0.2. Every ligature still keeps the width of the characters it replaces.
@@ -49,6 +51,7 @@ First release.
 - Added: Licence audit of all Nerd Fonts glyph sets, with `NOTICE.md` and the licence texts shipped in `licenses/`.
 - Added: User-facing `README.md` and developer documentation in `docs/BUILDING.md`.
 
-[Unreleased]: https://github.com/jim60105/JimMonoTC/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jim60105/JimMonoTC/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jim60105/JimMonoTC/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jim60105/JimMonoTC/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jim60105/JimMonoTC/releases/tag/v0.1.0
